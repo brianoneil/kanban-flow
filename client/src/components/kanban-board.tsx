@@ -7,9 +7,10 @@ import { useLocation, useParams } from "wouter";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { AddCardDialog } from "./add-card-dialog";
+import { CreateProjectDialog } from "./create-project-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter, Folder } from "lucide-react";
+import { Plus, Filter, Folder, FolderPlus } from "lucide-react";
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
@@ -49,6 +51,12 @@ export function KanbanBoard() {
   const handleProjectChange = (project: string) => {
     setSelectedProject(project);
     setLocation(`/project/${project}`);
+  };
+
+  // Handle new project creation
+  const handleProjectCreated = (projectName: string) => {
+    setSelectedProject(projectName);
+    setLocation(`/project/${projectName}`);
   };
   
   const sensors = useSensors(
@@ -245,6 +253,15 @@ export function KanbanBoard() {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateProjectDialog(true)}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              title="Create new project"
+            >
+              <FolderPlus className="w-4 h-4" />
+            </Button>
           </div>
         </div>
         
@@ -308,6 +325,12 @@ export function KanbanBoard() {
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
         project={selectedProject}
+      />
+      
+      <CreateProjectDialog
+        open={showCreateProjectDialog}
+        onOpenChange={setShowCreateProjectDialog}
+        onProjectCreated={handleProjectCreated}
       />
     </>
   );

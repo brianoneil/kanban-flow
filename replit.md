@@ -110,3 +110,6 @@ The architecture supports both development (with in-memory storage) and producti
 - **Project Filtering**: API endpoints now support project-based filtering with GET /api/projects
 - **Enhanced UI**: Project selector in kanban board header with formatted project names
 - **Sample Data**: Three demo projects (E-commerce Platform, Mobile App, Marketing Website)
+- **MCP Project Integration**: Updated all 9 MCP tools to support project filtering and management
+- **Enhanced MCP Tools**: New get_projects tool, project parameters in get_cards/get_cards_by_status/create_card
+- **Comprehensive Testing**: Verified project-based MCP functionality with test suite

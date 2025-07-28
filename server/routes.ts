@@ -270,11 +270,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MCP Tools definition
   const mcpTools: Tool[] = [
     {
+      name: "get_projects",
+      description: "Get all available projects in the Kanban system.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false
+      }
+    },
+    {
       name: "get_cards",
-      description: "Get all cards or filter by status. Returns cards sorted by their order within each status.",
+      description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status.",
       inputSchema: {
         type: "object",
         properties: {
+          project: {
+            type: "string",
+            description: "Optional: filter cards by specific project"
+          },
           status: {
             type: "string",
             enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
@@ -286,10 +299,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     {
       name: "get_cards_by_status",
-      description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values.",
+      description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project.",
       inputSchema: {
         type: "object",
-        properties: {},
+        properties: {
+          project: {
+            type: "string",
+            description: "Optional: filter cards by specific project"
+          }
+        },
         additionalProperties: false
       }
     },
@@ -310,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     {
       name: "create_card",
-      description: "Create a new card in the Kanban board.",
+      description: "Create a new card in the Kanban board for a specific project.",
       inputSchema: {
         type: "object",
         properties: {
@@ -321,6 +339,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: {
             type: "string",
             description: "Detailed description of the card"
+          },
+          project: {
+            type: "string",
+            description: "The project this card belongs to"
           },
           link: {
             type: "string",
@@ -333,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             default: "not-started"
           }
         },
-        required: ["title", "description"],
+        required: ["title", "description", "project"],
         additionalProperties: false
       }
     },
@@ -449,9 +471,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function executeMcpTool(name: string, args: any): Promise<CallToolResult> {
     try {
       switch (name) {
+        case "get_projects": {
+          const projects = await storage.getProjects();
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(projects, null, 2)
+              } as TextContent
+            ]
+          };
+        }
+
         case "get_cards": {
-          const { status } = args as { status?: string };
-          const cards = await storage.getAllCards();
+          const { status, project } = args as { status?: string; project?: string };
+          const cards = await storage.getAllCards(project);
           
           if (status) {
             const filteredCards = cards
@@ -478,7 +512,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         case "get_cards_by_status": {
-          const cards = await storage.getAllCards();
+          const { project } = args as { project?: string };
+          const cards = await storage.getAllCards(project);
           const grouped = cards.reduce((acc, card) => {
             if (!acc[card.status]) {
               acc[card.status] = [];
@@ -517,14 +552,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         case "create_card": {
-          const { title, description, link, status = "not-started" } = args as {
+          const { title, description, project, link, status = "not-started" } = args as {
             title: string;
             description: string;
+            project: string;
             link?: string;
             status?: string;
           };
           
-          const cardData = { title, description, link, status };
+          const cardData = { title, description, project, link, status };
           const card = await storage.createCard(cardData);
           
           // Broadcast card creation

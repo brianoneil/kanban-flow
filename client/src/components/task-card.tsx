@@ -1,9 +1,14 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
-import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield } from "lucide-react";
+import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2 } from "lucide-react";
 import { Card } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { ExplosionAnimation } from "./explosion-animation";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface TaskCardProps {
   card: Card & { 
@@ -13,6 +18,11 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ card }: TaskCardProps) {
+  const [isExploding, setIsExploding] = useState(false);
+  const [shouldHide, setShouldHide] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const {
     attributes,
     listeners,
@@ -21,6 +31,44 @@ export function TaskCard({ card }: TaskCardProps) {
     transition,
     isDragging,
   } = useSortable({ id: card.id });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest(`/api/cards/${card.id}`, {
+      method: "DELETE",
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
+      toast({
+        title: "Card deleted",
+        description: "The card has been successfully removed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete card. Please try again.",
+        variant: "destructive",
+      });
+      // Reset animation state on error
+      setIsExploding(false);
+      setShouldHide(false);
+    },
+  });
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExploding(true);
+  };
+
+  const handleExplosionComplete = () => {
+    setShouldHide(true);
+    deleteMutation.mutate();
+  };
+
+  // Hide the card completely after explosion
+  if (shouldHide) {
+    return null;
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -54,46 +102,60 @@ export function TaskCard({ card }: TaskCardProps) {
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn(
-        "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02]",
-        getBorderColor(),
-        isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50",
-        card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75"
-      )}
+    <ExplosionAnimation 
+      trigger={isExploding} 
+      onComplete={handleExplosionComplete}
     >
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium text-gray-900 flex-1 line-clamp-2">{card.title}</h4>
-        <GripVertical className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
-      </div>
-      
-      <p className="text-sm text-gray-600 mb-3 line-clamp-2">{card.description}</p>
-      
-      <div className="flex items-center justify-between">
-        {card.link ? (
-          <a
-            href={card.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span>View Details</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        ) : (
-          <div></div>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        className={cn(
+          "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02] group relative",
+          getBorderColor(),
+          isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50",
+          card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75"
         )}
+      >
+        {/* Delete button - only show on hover */}
+        <button
+          onClick={handleDelete}
+          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-red-100 text-red-500 hover:text-red-700 z-10"
+          title="Delete card"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="font-medium text-gray-900 flex-1 line-clamp-2 pr-8">{card.title}</h4>
+          <GripVertical className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
+        </div>
         
-        <div className="flex items-center space-x-2">
-          {getStatusIcon()}
-          <span className="text-xs text-gray-500">ID: {card.id.slice(0, 8)}</span>
+        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{card.description}</p>
+        
+        <div className="flex items-center justify-between">
+          {card.link ? (
+            <a
+              href={card.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span>View Details</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : (
+            <div></div>
+          )}
+          
+          <div className="flex items-center space-x-2">
+            {getStatusIcon()}
+            <span className="text-xs text-gray-500">ID: {card.id.slice(0, 8)}</span>
+          </div>
         </div>
       </div>
-    </div>
+    </ExplosionAnimation>
   );
 }

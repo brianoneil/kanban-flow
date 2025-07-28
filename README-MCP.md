@@ -1,6 +1,9 @@
 # Kanban MCP Server
 
-This Model Context Protocol (MCP) server provides AI agents with tools to interact with the Kanban board API.
+This Model Context Protocol (MCP) server provides AI agents with tools to interact with the Kanban board API. It comes in two versions:
+
+1. **Local MCP Server** (`mcp-server.ts`) - Uses stdio transport for local Claude Desktop integration
+2. **Remote MCP Server** (`mcp-remote-server.ts`) - HTTP-based server for production deployments
 
 ## Features
 
@@ -40,33 +43,58 @@ chmod +x mcp-server.ts
 
 ### Running the MCP Server
 
-#### Development Mode
+#### Local MCP Server (stdio transport)
+
+**Development Mode:**
 ```bash
 tsx mcp-server.ts
 ```
 
-#### Production Mode
-First build it:
+**Production Mode:**
 ```bash
+# Build first
 esbuild mcp-server.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/mcp-server.js
-```
 
-Then run:
-```bash
+# Run
 node dist/mcp-server.js
 ```
 
-### Configuration
+#### Remote MCP Server (HTTP transport)
 
-Set the Kanban server URL if it's different from the default:
+**Development Mode:**
 ```bash
-export KANBAN_SERVER_URL=http://your-kanban-server.com:5000
-tsx mcp-server.ts
+tsx mcp-remote-server.ts
 ```
+
+**Production Mode:**
+```bash
+# Build first
+esbuild mcp-remote-server.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/mcp-remote-server.js
+
+# Run
+node dist/mcp-remote-server.js
+```
+
+**Environment Variables:**
+```bash
+# Port for the MCP remote server (default: 3001)
+export MCP_PORT=3001
+
+# Kanban server URL (default: http://localhost:5000)
+export KANBAN_SERVER_URL=http://your-kanban-server.com:5000
+
+# Start the remote server
+tsx mcp-remote-server.ts
+```
+
+**Remote Server Endpoints:**
+- Health check: `http://localhost:3001/health`
+- Server info: `http://localhost:3001/info`
+- MCP endpoint: `http://localhost:3001/mcp`
 
 ## Client Configuration
 
-### Claude Desktop Configuration
+### Local MCP Server (Claude Desktop)
 
 Add this to your Claude Desktop configuration file (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
 
@@ -84,12 +112,36 @@ Add this to your Claude Desktop configuration file (`~/Library/Application Suppo
 }
 ```
 
+### Remote MCP Server
+
+For production deployments, use the HTTP-based remote server:
+
+**MCP Client Configuration:**
+```json
+{
+  "mcpServers": {
+    "kanban-remote": {
+      "url": "http://your-mcp-server.com:3001/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+**Testing the Remote Server:**
+```bash
+# Test all endpoints and tools
+tsx test-mcp-remote.ts
+
+# Or test specific endpoint
+curl http://localhost:3001/health
+curl http://localhost:3001/info
+```
+
 ### Other MCP Clients
 
-For other MCP clients, use the stdio transport with the command:
-```bash
-tsx /path/to/your/project/mcp-server.ts
-```
+- **Local (stdio):** `tsx /path/to/your/project/mcp-server.ts`
+- **Remote (HTTP):** Connect to `http://your-server:3001/mcp` using HTTP transport
 
 ## Tool Examples
 

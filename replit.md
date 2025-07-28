@@ -29,10 +29,12 @@ Preferred communication style: Simple, everyday language.
 - **Development**: In-memory storage fallback for development
 
 ### MCP Integration
-- **MCP Server**: Model Context Protocol server for AI agent integration
+- **Local MCP Server**: Model Context Protocol server using stdio transport for Claude Desktop
+- **Remote MCP Server**: HTTP-based MCP server for production deployments
 - **SDK**: @modelcontextprotocol/sdk for TypeScript implementation
 - **Tools**: 8 comprehensive tools for card management and movement
-- **Transport**: stdio transport for client communication
+- **Endpoints**: Health check, info, and MCP protocol endpoints
+- **CORS Support**: Cross-origin requests enabled for remote access
 
 ## Key Components
 
@@ -63,8 +65,9 @@ Preferred communication style: Simple, everyday language.
 6. **Optimistic Updates**: Immediate UI updates before server confirmation for smooth UX
 7. **Real-time Updates**: WebSocket broadcasts changes to all connected clients
 8. **Animation System**: Framer Motion LayoutGroup enables smooth cross-column animations
-9. **MCP Integration**: AI agents can perform all operations via MCP tools
-10. **Error Handling**: Toast notifications for user feedback
+9. **MCP Integration**: AI agents can perform all operations via local or remote MCP tools
+10. **Remote API**: HTTP-based MCP server for production agent integration
+11. **Error Handling**: Toast notifications for user feedback
 
 ## External Dependencies
 
@@ -93,3 +96,11 @@ The application is configured for deployment with:
 - **Development Mode**: Vite dev server with HMR and proxy setup
 
 The architecture supports both development (with in-memory storage) and production (with PostgreSQL) environments, with the storage layer abstracted to allow easy switching between implementations.
+
+## Recent Changes
+
+### July 28, 2025
+- **Remote MCP Server**: Created HTTP-based MCP server (`mcp-remote-server.ts`) for production deployments
+- **Dual MCP Architecture**: Now supports both local (stdio) and remote (HTTP) MCP integration
+- **Production Ready**: Remote server includes health checks, CORS support, and proper error handling
+- **Test Infrastructure**: Added comprehensive test suite for remote MCP server validation

@@ -28,30 +28,27 @@ Find your Claude Desktop configuration file:
 
 ## Step 2: Add Kanban MCP Server
 
-Open the configuration file and add the Kanban MCP server:
+Open the configuration file and add the Kanban MCP server. 
 
+**Method 1: HTTP Transport (Recommended for Remote Servers)**
 ```json
 {
   "mcpServers": {
-    "kanban": {
-      "command": "node",
-      "args": ["-e", "console.log('Use HTTP transport instead')"],
-      "transport": {
-        "type": "http",
-        "url": "https://kanban-flow-boneil.replit.app/mcp"
-      }
+    "kanban-board": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-http", "https://kanban-flow-boneil.replit.app/mcp"]
     }
   }
 }
 ```
 
-**Recommended configuration for latest Claude Desktop:**
+**Method 2: Direct HTTP Configuration**
 ```json
 {
   "mcpServers": {
     "kanban-board": {
       "command": "node",
-      "args": ["-e", "console.log('Use HTTP transport')"],
+      "args": ["-e", "console.log('HTTP MCP Server')"],
       "transport": {
         "type": "http",
         "url": "https://kanban-flow-boneil.replit.app/mcp"
@@ -61,7 +58,7 @@ Open the configuration file and add the Kanban MCP server:
 }
 ```
 
-**Alternative simpler configuration:**
+**Method 3: Simple Configuration (if supported)**
 ```json
 {
   "mcpServers": {
@@ -115,8 +112,21 @@ Try these commands in Claude Desktop:
 
 ### Issue: Claude says no tools are available
 
-**Solution 1: Use the transport configuration**
-Try the "transport" format instead of the simple URL format:
+**Solution 1: Use the HTTP proxy configuration (Most Reliable)**
+Try this configuration which uses the official MCP HTTP proxy:
+```json
+{
+  "mcpServers": {
+    "kanban-board": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-http", "https://kanban-flow-boneil.replit.app/mcp"]
+    }
+  }
+}
+```
+
+**Solution 2: Alternative transport configuration**
+If the above doesn't work, try the transport format:
 ```json
 {
   "mcpServers": {

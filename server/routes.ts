@@ -735,14 +735,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       switch (method) {
         case "initialize":
-          // MCP initialization handshake
+          // MCP initialization handshake - match client protocol version
+          const clientProtocolVersion = params?.protocolVersion || "2024-11-05";
           res.json({
             jsonrpc: "2.0",
             id,
             result: {
-              protocolVersion: "2024-11-05",
+              protocolVersion: clientProtocolVersion,
               capabilities: {
-                tools: {}
+                tools: {
+                  listChanged: true
+                },
+                logging: {}
               },
               serverInfo: {
                 name: "kanban-integrated-server",
@@ -780,13 +784,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
 
         case "notifications/initialized":
-          // Handle initialization notification
-          res.json({
-            jsonrpc: "2.0",
-            id,
-            result: {}
-          });
-          break;
+          // Handle initialization notification (no response needed for notifications)
+          res.status(204).send();
+          return;
 
         default:
           console.log(`[MCP] Unknown method: ${method}`);

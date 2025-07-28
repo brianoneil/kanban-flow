@@ -679,7 +679,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // MCP Protocol endpoint
+  // MCP Protocol endpoint (GET handler for info)
+  app.get('/mcp', (req, res) => {
+    res.json({
+      error: "MCP endpoint requires POST requests with JSON-RPC 2.0 format",
+      usage: "This is a Model Context Protocol (MCP) server endpoint",
+      examples: {
+        listTools: {
+          method: "POST",
+          url: "/mcp",
+          body: {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/list",
+            params: {}
+          }
+        },
+        callTool: {
+          method: "POST", 
+          url: "/mcp",
+          body: {
+            jsonrpc: "2.0",
+            id: 2,
+            method: "tools/call",
+            params: {
+              name: "get_cards",
+              arguments: {}
+            }
+          }
+        }
+      },
+      endpoints: {
+        health: "/mcp/health",
+        info: "/mcp/info",
+        mcp: "/mcp (POST only)"
+      }
+    });
+  });
+
+  // MCP Protocol endpoint (JSON-RPC 2.0)
   app.post('/mcp', async (req, res) => {
     try {
       const { jsonrpc, id, method, params } = req.body;

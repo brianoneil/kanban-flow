@@ -11,12 +11,15 @@ import { Plus, Filter } from "lucide-react";
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSocket } from "@/hooks/use-websocket";
+import { cn } from "@/lib/utils";
 
 export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isConnected } = useWebSocket();
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -181,17 +184,29 @@ export function KanbanBoard() {
 
   return (
     <>
-      <div className="flex items-center justify-end mb-6 space-x-3">
-        <Button
-          onClick={() => setShowAddDialog(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Card
-        </Button>
-        <Button variant="outline" className="bg-gray-100 hover:bg-gray-200 text-gray-700">
-          <Filter className="w-4 h-4" />
-        </Button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <div className={cn(
+            "w-2 h-2 rounded-full",
+            isConnected ? "bg-green-500" : "bg-red-500"
+          )}></div>
+          <span className="text-sm text-gray-600">
+            {isConnected ? "Real-time updates active" : "Connecting..."}
+          </span>
+        </div>
+        
+        <div className="flex items-center space-x-3">
+          <Button
+            onClick={() => setShowAddDialog(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Card
+          </Button>
+          <Button variant="outline" className="bg-gray-100 hover:bg-gray-200 text-gray-700">
+            <Filter className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <DndContext

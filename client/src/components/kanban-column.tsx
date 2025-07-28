@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { motion, AnimatePresence } from "framer-motion";
 import { TaskCard } from "./task-card";
 import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
@@ -68,11 +69,25 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
           )}
         >
           <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-3">
-              {cards.map(card => (
-                <TaskCard key={card.id} card={card} />
-              ))}
-            </div>
+            <motion.div className="space-y-3" layout>
+              <AnimatePresence>
+                {cards.map(card => (
+                  <motion.div
+                    key={card.id}
+                    layout
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ 
+                      layout: { duration: 0.3, ease: "easeInOut" },
+                      opacity: { duration: 0.2 }
+                    }}
+                  >
+                    <TaskCard card={card} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
           </SortableContext>
           
           {/* Drop zone for empty columns or end of column */}

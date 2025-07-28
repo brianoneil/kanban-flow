@@ -43,10 +43,30 @@ export function useWebSocket() {
             case 'CARD_UPDATED':
               // Update existing card in cache
               queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {
+                const oldCard = oldData.find(card => card.id === message.data.id);
+                const statusChanged = oldCard && oldCard.status !== message.data.status;
+                
                 return oldData.map(card => 
-                  card.id === message.data.id ? message.data : card
+                  card.id === message.data.id ? {
+                    ...message.data,
+                    _remoteUpdate: true,
+                    _statusChanged: statusChanged
+                  } : card
                 );
               });
+              
+              // Clear the remote update flag after animation
+              setTimeout(() => {
+                queryClient.setQueryData(['/api/cards'], (currentData: Card[] = []) => {
+                  return currentData.map(card => {
+                    const { _remoteUpdate, _statusChanged, ...cleanCard } = card as Card & { 
+                      _remoteUpdate?: boolean; 
+                      _statusChanged?: boolean; 
+                    };
+                    return cleanCard;
+                  });
+                });
+              }, 600);
               break;
               
             case 'CARD_DELETED':

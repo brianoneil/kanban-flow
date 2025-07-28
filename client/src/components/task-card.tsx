@@ -1,11 +1,15 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { motion } from "framer-motion";
 import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield } from "lucide-react";
 import { Card } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 interface TaskCardProps {
-  card: Card;
+  card: Card & { 
+    _remoteUpdate?: boolean; 
+    _statusChanged?: boolean; 
+  };
 }
 
 export function TaskCard({ card }: TaskCardProps) {
@@ -50,11 +54,24 @@ export function TaskCard({ card }: TaskCardProps) {
   };
 
   return (
-    <div
+    <motion.div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      animate={card._remoteUpdate ? {
+        scale: card._statusChanged ? [1, 1.05, 1] : [1, 1.02, 1],
+        boxShadow: [
+          "0 1px 3px rgba(0, 0, 0, 0.12)",
+          card._statusChanged ? "0 8px 25px rgba(59, 130, 246, 0.4)" : "0 4px 12px rgba(34, 197, 94, 0.3)",
+          "0 1px 3px rgba(0, 0, 0, 0.12)"
+        ],
+        borderColor: card._statusChanged ? "#3b82f6" : "#22c55e"
+      } : {}}
+      transition={{ 
+        duration: card._statusChanged ? 0.6 : 0.4, 
+        ease: "easeInOut" 
+      }}
       className={cn(
         "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02]",
         getBorderColor(),
@@ -89,6 +106,6 @@ export function TaskCard({ card }: TaskCardProps) {
           <span className="text-xs text-gray-500">ID: {card.id.slice(0, 8)}</span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -63,20 +63,20 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
         
         <div
           className={cn(
-            "p-4 space-y-3 min-h-[400px] transition-colors duration-200",
+            "p-4 min-h-[400px] transition-colors duration-200",
             isOver && "bg-blue-50"
           )}
         >
           <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
-            {cards.map(card => (
-              <TaskCard key={card.id} card={card} />
-            ))}
+            <div className="space-y-3">
+              {cards.map(card => (
+                <TaskCard key={card.id} card={card} />
+              ))}
+            </div>
           </SortableContext>
           
-          {/* Invisible drop zone when column is full */}
-          {cards.length > 0 && (
-            <div className="h-8 w-full" />
-          )}
+          {/* Drop zone for empty columns or end of column */}
+          <div className="h-16 w-full" />
         </div>
       </div>
     </div>

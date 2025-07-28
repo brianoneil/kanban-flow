@@ -78,6 +78,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reorder cards within a status
+  app.post("/api/cards/reorder", async (req, res) => {
+    try {
+      const { cardId, newStatus, newOrder } = req.body;
+      
+      if (!cardId || !newStatus || newOrder === undefined) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      const card = await storage.updateCard(cardId, { 
+        status: newStatus, 
+        order: newOrder.toString() 
+      });
+      
+      res.json(card);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      res.status(500).json({ message: "Failed to reorder card" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

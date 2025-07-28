@@ -52,7 +52,9 @@ export function KanbanBoard() {
   });
 
   const getCardsByStatus = (status: KanbanStatus) => {
-    return cards.filter(card => card.status === status);
+    return cards
+      .filter(card => card.status === status)
+      .sort((a, b) => parseInt(a.order) - parseInt(b.order));
   };
 
   const getColumnConfig = (status: KanbanStatus) => {
@@ -79,9 +81,10 @@ export function KanbanBoard() {
       return;
     }
 
+    const activeId = active.id.toString();
     const overId = over.id.toString();
     
-    // Check if dropped on a column
+    // If we're dropping on a column
     if (KANBAN_STATUSES.includes(overId as KanbanStatus)) {
       const newStatus = overId as KanbanStatus;
       if (activeCard.status !== newStatus) {
@@ -89,6 +92,47 @@ export function KanbanBoard() {
           id: activeCard.id,
           updates: { status: newStatus }
         });
+      }
+    } else {
+      // We're dropping on a card
+      const overCard = cards.find(card => card.id === overId);
+      
+      if (overCard) {
+        // Same column reordering
+        if (activeCard.status === overCard.status) {
+          const statusCards = getCardsByStatus(activeCard.status);
+          const activeIndex = statusCards.findIndex(card => card.id === activeId);
+          const overIndex = statusCards.findIndex(card => card.id === overId);
+          
+          if (activeIndex !== overIndex) {
+            const reorderedCards = arrayMove(statusCards, activeIndex, overIndex);
+            
+            // Update the order for all cards in this status
+            const allCardsWithNewOrder = cards.map(card => {
+              if (card.status === activeCard.status) {
+                const newIndex = reorderedCards.findIndex(c => c.id === card.id);
+                return { ...card, order: (newIndex + 1).toString() };
+              }
+              return card;
+            });
+            
+            // Optimistic update
+            queryClient.setQueryData(["/api/cards"], allCardsWithNewOrder);
+            
+            // Update the moved card's order
+            const newOrder = (overIndex + 1).toString();
+            updateCardMutation.mutate({
+              id: activeCard.id,
+              updates: { order: newOrder }
+            });
+          }
+        } else {
+          // Different column - move to that column
+          updateCardMutation.mutate({
+            id: activeCard.id,
+            updates: { status: overCard.status }
+          });
+        }
       }
     }
 

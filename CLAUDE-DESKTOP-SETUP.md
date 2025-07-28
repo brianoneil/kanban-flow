@@ -30,25 +30,13 @@ Find your Claude Desktop configuration file:
 
 Open the configuration file and add the Kanban MCP server. 
 
-**Method 1: HTTP Transport (Recommended for Remote Servers)**
-```json
-{
-  "mcpServers": {
-    "kanban-board": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-http", "https://kanban-flow-boneil.replit.app/mcp"]
-    }
-  }
-}
-```
-
-**Method 2: Direct HTTP Configuration**
+**Method 1: Direct HTTP Configuration (Recommended)**
 ```json
 {
   "mcpServers": {
     "kanban-board": {
       "command": "node",
-      "args": ["-e", "console.log('HTTP MCP Server')"],
+      "args": ["-e", "console.log('Kanban MCP Server'); process.stdin.pause();"],
       "transport": {
         "type": "http",
         "url": "https://kanban-flow-boneil.replit.app/mcp"
@@ -58,7 +46,39 @@ Open the configuration file and add the Kanban MCP server.
 }
 ```
 
-**Method 3: Simple Configuration (if supported)**
+**Method 2: Alternative HTTP Configuration**
+```json
+{
+  "mcpServers": {
+    "kanban-board": {
+      "command": "node",
+      "args": ["-e", "console.log('Starting HTTP transport')"],
+      "env": {
+        "MCP_SERVER_URL": "https://kanban-flow-boneil.replit.app/mcp"
+      },
+      "transport": {
+        "type": "http",
+        "url": "https://kanban-flow-boneil.replit.app/mcp"
+      }
+    }
+  }
+}
+```
+
+**Method 3: Local Proxy (Most Compatible)**
+Download the `claude-mcp-proxy.js` file from your project and use:
+```json
+{
+  "mcpServers": {
+    "kanban-board": {
+      "command": "node",
+      "args": ["/path/to/claude-mcp-proxy.js"]
+    }
+  }
+}
+```
+
+**Method 4: Simple Configuration (if supported)**
 ```json
 {
   "mcpServers": {
@@ -112,14 +132,18 @@ Try these commands in Claude Desktop:
 
 ### Issue: Claude says no tools are available
 
-**Solution 1: Use the HTTP proxy configuration (Most Reliable)**
-Try this configuration which uses the official MCP HTTP proxy:
+**Solution 1: Use the direct HTTP transport configuration (Most Reliable)**
+Try this configuration which connects directly to your MCP server:
 ```json
 {
   "mcpServers": {
     "kanban-board": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-http", "https://kanban-flow-boneil.replit.app/mcp"]
+      "command": "node",
+      "args": ["-e", "console.log('Kanban MCP Server'); process.stdin.pause();"],
+      "transport": {
+        "type": "http",
+        "url": "https://kanban-flow-boneil.replit.app/mcp"
+      }
     }
   }
 }

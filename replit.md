@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack Kanban board application built with React (TypeScript) on the frontend and Express.js on the backend. The application allows users to manage tasks through a drag-and-drop interface with different status columns (not-started, blocked, in-progress, complete, verified).
+This is a full-stack Kanban board application built with React (TypeScript) on the frontend and Express.js on the backend. The application allows users to manage tasks through a smooth drag-and-drop interface with different status columns (not-started, blocked, in-progress, complete, verified). Features advanced drag-and-drop with card insertion, reordering, and optimistic updates for seamless user experience.
 
 ## User Preferences
 
@@ -47,11 +47,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Data Flow
 
-1. **Card Retrieval**: Frontend fetches cards via GET /api/cards
+1. **Card Retrieval**: Frontend fetches cards via GET /api/cards, sorted by order within columns
 2. **Card Creation**: Forms submit to POST /api/cards with validation
-3. **Card Updates**: Drag-and-drop triggers PATCH /api/cards/:id for status changes
-4. **Real-time Updates**: TanStack Query handles cache invalidation and optimistic updates
-5. **Error Handling**: Toast notifications for user feedback
+3. **Card Updates**: Drag-and-drop triggers PATCH /api/cards/:id for status/order changes
+4. **Card Reordering**: POST /api/cards/reorder endpoint for within-column position changes
+5. **Optimistic Updates**: Immediate UI updates before server confirmation for smooth UX
+6. **Real-time Updates**: TanStack Query handles cache invalidation and state synchronization
+7. **Error Handling**: Toast notifications for user feedback
 
 ## External Dependencies
 

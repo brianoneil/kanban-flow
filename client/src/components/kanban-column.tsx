@@ -70,17 +70,18 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
         >
           <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
             <motion.div className="space-y-3" layout>
-              <AnimatePresence>
+              <AnimatePresence mode="popLayout">
                 {cards.map(card => (
                   <motion.div
                     key={card.id}
-                    layout
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
+                    layoutId={`card-${card.id}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
                     transition={{ 
-                      layout: { duration: 0.3, ease: "easeInOut" },
-                      opacity: { duration: 0.2 }
+                      layout: { duration: 0.5, ease: "easeInOut" },
+                      opacity: { duration: 0.3 },
+                      scale: { duration: 0.3 }
                     }}
                   >
                     <TaskCard card={card} />

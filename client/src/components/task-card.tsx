@@ -54,28 +54,16 @@ export function TaskCard({ card }: TaskCardProps) {
   };
 
   return (
-    <motion.div
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      animate={card._remoteUpdate ? {
-        scale: card._statusChanged ? [1, 1.05, 1] : [1, 1.02, 1],
-        boxShadow: [
-          "0 1px 3px rgba(0, 0, 0, 0.12)",
-          card._statusChanged ? "0 8px 25px rgba(59, 130, 246, 0.4)" : "0 4px 12px rgba(34, 197, 94, 0.3)",
-          "0 1px 3px rgba(0, 0, 0, 0.12)"
-        ],
-        borderColor: card._statusChanged ? "#3b82f6" : "#22c55e"
-      } : {}}
-      transition={{ 
-        duration: card._statusChanged ? 0.6 : 0.4, 
-        ease: "easeInOut" 
-      }}
       className={cn(
         "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02]",
         getBorderColor(),
-        isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50"
+        isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50",
+        card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75"
       )}
     >
       <div className="flex items-start justify-between mb-2">
@@ -106,6 +94,6 @@ export function TaskCard({ card }: TaskCardProps) {
           <span className="text-xs text-gray-500">ID: {card.id.slice(0, 8)}</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

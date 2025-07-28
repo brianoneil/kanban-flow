@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { motion } from "framer-motion";
+import { motion, LayoutGroup } from "framer-motion";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { AddCardDialog } from "./add-card-dialog";
@@ -209,13 +209,14 @@ export function KanbanBoard() {
         </div>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        collisionDetection={closestCenter}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 min-h-screen">
+      <LayoutGroup>
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          collisionDetection={closestCenter}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 min-h-screen">
           {KANBAN_STATUSES.map(status => {
             const config = getColumnConfig(status);
             const columnCards = getCardsByStatus(status);
@@ -247,7 +248,8 @@ export function KanbanBoard() {
             </motion.div>
           ) : null}
         </DragOverlay>
-      </DndContext>
+        </DndContext>
+      </LayoutGroup>
 
       <AddCardDialog
         open={showAddDialog}

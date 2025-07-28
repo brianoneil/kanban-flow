@@ -10,6 +10,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Kanban} />
+      <Route path="/project/:project" component={Kanban} />
       <Route component={NotFound} />
     </Switch>
   );

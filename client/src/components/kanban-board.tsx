@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { motion, LayoutGroup } from "framer-motion";
+import { useLocation, useParams } from "wouter";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { AddCardDialog } from "./add-card-dialog";
@@ -18,10 +19,37 @@ import { cn } from "@/lib/utils";
 export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<string>("ecommerce-platform");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
+  const [location, setLocation] = useLocation();
+  const params = useParams();
+  
+  // Get current project from URL parameter or default to first available
+  const { data: projects = [] } = useQuery<string[]>({
+    queryKey: ["/api/projects"],
+  });
+  
+  const urlProject = params.project;
+  const [selectedProject, setSelectedProject] = useState<string>(
+    urlProject || "ecommerce-platform"
+  );
+  
+  // Update selected project when URL changes or projects load
+  useEffect(() => {
+    if (urlProject && projects.includes(urlProject)) {
+      setSelectedProject(urlProject);
+    } else if (!urlProject && projects.length > 0) {
+      // If no project in URL, redirect to the first project
+      setLocation(`/project/${projects[0]}`);
+    }
+  }, [urlProject, projects, setLocation]);
+  
+  // Handle project selection and URL update
+  const handleProjectChange = (project: string) => {
+    setSelectedProject(project);
+    setLocation(`/project/${project}`);
+  };
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -30,10 +58,6 @@ export function KanbanBoard() {
       },
     })
   );
-
-  const { data: projects = [] } = useQuery<string[]>({
-    queryKey: ["/api/projects"],
-  });
 
   const { data: cards = [], isLoading } = useQuery<Card[]>({
     queryKey: ["/api/cards", selectedProject],
@@ -209,7 +233,7 @@ export function KanbanBoard() {
           
           <div className="flex items-center space-x-2">
             <Folder className="w-4 h-4 text-gray-500" />
-            <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <Select value={selectedProject} onValueChange={handleProjectChange}>
               <SelectTrigger className="w-48">
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>

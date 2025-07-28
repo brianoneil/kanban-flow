@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion } from "framer-motion";
 import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2 } from "lucide-react";
-import { Card } from "@shared/schema";
+import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ExplosionAnimation } from "./explosion-animation";
 import { useState } from "react";
@@ -74,7 +74,7 @@ export function TaskCard({ card }: TaskCardProps) {
   };
 
   const getBorderColor = () => {
-    const colors = {
+    const colors: Record<KanbanStatus, string> = {
       "not-started": "border-gray-200",
       "blocked": "border-red-200", 
       "in-progress": "border-blue-200",

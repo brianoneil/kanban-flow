@@ -33,9 +33,7 @@ export function TaskCard({ card }: TaskCardProps) {
   } = useSortable({ id: card.id });
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/cards/${card.id}`, {
-      method: "DELETE",
-    }),
+    mutationFn: () => apiRequest("DELETE", `/api/cards/${card.id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
       toast({

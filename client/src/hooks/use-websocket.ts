@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@shared/schema';
 
@@ -6,16 +6,21 @@ export function useWebSocket() {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
 
   const connect = () => {
     try {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const wsUrl = `${protocol}//${window.location.host}/ws`;
       
+      console.log('Attempting to connect to WebSocket:', wsUrl);
+      console.log('Current location:', window.location.href);
+      
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected successfully');
+        setIsConnected(true);
       };
 
       wsRef.current.onmessage = (event) => {
@@ -59,14 +64,16 @@ export function useWebSocket() {
         }
       };
 
-      wsRef.current.onclose = () => {
-        console.log('WebSocket disconnected');
+      wsRef.current.onclose = (event) => {
+        console.log('WebSocket disconnected', event.code, event.reason);
+        setIsConnected(false);
         // Attempt to reconnect after 3 seconds
         reconnectTimeoutRef.current = setTimeout(connect, 3000);
       };
 
       wsRef.current.onerror = (error) => {
         console.error('WebSocket error:', error);
+        setIsConnected(false);
       };
 
     } catch (error) {
@@ -90,7 +97,7 @@ export function useWebSocket() {
   }, []);
 
   return {
-    isConnected: wsRef.current?.readyState === WebSocket.OPEN,
+    isConnected,
     ws: wsRef.current
   };
 }

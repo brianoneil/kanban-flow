@@ -16,15 +16,23 @@ Preferred communication style: Simple, everyday language.
 - **Styling**: Tailwind CSS with CSS variables for theming
 - **State Management**: TanStack Query (React Query) for server state management
 - **Form Handling**: React Hook Form with Zod validation
-- **Drag & Drop**: @dnd-kit library for kanban card interactions
+- **Drag & Drop**: @dnd-kit library with Framer Motion for smooth animations
+- **Real-time**: WebSocket client with automatic reconnection
 - **Routing**: Wouter for lightweight client-side routing
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Database Provider**: Neon Database (serverless PostgreSQL)
-- **API Style**: RESTful API endpoints
+- **API Style**: RESTful API endpoints with comprehensive CRUD operations
+- **Real-time**: WebSocket server broadcasting live updates
 - **Development**: In-memory storage fallback for development
+
+### MCP Integration
+- **MCP Server**: Model Context Protocol server for AI agent integration
+- **SDK**: @modelcontextprotocol/sdk for TypeScript implementation
+- **Tools**: 8 comprehensive tools for card management and movement
+- **Transport**: stdio transport for client communication
 
 ## Key Components
 
@@ -50,10 +58,13 @@ Preferred communication style: Simple, everyday language.
 1. **Card Retrieval**: Frontend fetches cards via GET /api/cards, sorted by order within columns
 2. **Card Creation**: Forms submit to POST /api/cards with validation
 3. **Card Updates**: Drag-and-drop triggers PATCH /api/cards/:id for status/order changes
-4. **Card Reordering**: POST /api/cards/reorder endpoint for within-column position changes
-5. **Optimistic Updates**: Immediate UI updates before server confirmation for smooth UX
-6. **Real-time Updates**: TanStack Query handles cache invalidation and state synchronization
-7. **Error Handling**: Toast notifications for user feedback
+4. **Card Movement**: POST /api/cards/:id/move endpoint with automatic position calculation
+5. **Batch Operations**: POST /api/cards/batch-move for efficient multi-card movements
+6. **Optimistic Updates**: Immediate UI updates before server confirmation for smooth UX
+7. **Real-time Updates**: WebSocket broadcasts changes to all connected clients
+8. **Animation System**: Framer Motion LayoutGroup enables smooth cross-column animations
+9. **MCP Integration**: AI agents can perform all operations via MCP tools
+10. **Error Handling**: Toast notifications for user feedback
 
 ## External Dependencies
 

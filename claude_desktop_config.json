@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "kanban": {
+      "command": "tsx",
+      "args": ["./mcp-server.ts"],
+      "env": {
+        "KANBAN_SERVER_URL": "http://localhost:5000"
+      }
+    }
+  }
+}

@@ -26,8 +26,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all cards
   app.get("/api/cards", async (req, res) => {
     try {
-      const { status } = req.query;
-      const cards = await storage.getAllCards();
+      const { status, project } = req.query;
+      const cards = await storage.getAllCards(project as string);
       
       if (status) {
         const filteredCards = cards
@@ -42,10 +42,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all projects
+  app.get("/api/projects", async (req, res) => {
+    try {
+      const projects = await storage.getProjects();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch projects" });
+    }
+  });
+
   // Get cards grouped by status (must come before the :id route)
   app.get("/api/cards/by-status", async (req, res) => {
     try {
-      const cards = await storage.getAllCards();
+      const { project } = req.query;
+      const cards = await storage.getAllCards(project as string);
       const grouped = cards.reduce((acc, card) => {
         if (!acc[card.status]) {
           acc[card.status] = [];

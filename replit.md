@@ -106,3 +106,7 @@ The architecture supports both development (with in-memory storage) and producti
 - **Production Optimized**: Integrated server shares same port and infrastructure as main app
 - **Comprehensive Testing**: Added test suites for all MCP server variants
 - **Real-time MCP**: MCP operations trigger WebSocket broadcasts for live UI updates
+- **Multi-Project Support**: Added project property to cards for organizing different boards by project
+- **Project Filtering**: API endpoints now support project-based filtering with GET /api/projects
+- **Enhanced UI**: Project selector in kanban board header with formatted project names
+- **Sample Data**: Three demo projects (E-commerce Platform, Mobile App, Marketing Website)

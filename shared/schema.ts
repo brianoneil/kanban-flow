@@ -10,6 +10,7 @@ export const cards = pgTable("cards", {
   link: text("link"),
   status: text("status").notNull().default("not-started"),
   order: text("order").notNull().default("0"),
+  project: text("project").notNull().default("default"),
 });
 
 export const insertCardSchema = createInsertSchema(cards).omit({

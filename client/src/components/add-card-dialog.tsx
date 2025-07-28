@@ -34,9 +34,10 @@ import { KANBAN_STATUSES } from "@shared/schema";
 interface AddCardDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  project: string;
 }
 
-export function AddCardDialog({ open, onOpenChange }: AddCardDialogProps) {
+export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -47,6 +48,7 @@ export function AddCardDialog({ open, onOpenChange }: AddCardDialogProps) {
       description: "",
       link: "",
       status: "not-started",
+      project,
     },
   });
 
@@ -56,12 +58,18 @@ export function AddCardDialog({ open, onOpenChange }: AddCardDialogProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cards", project] });
       toast({
         title: "Card created",
         description: "New card has been added to the board.",
       });
-      form.reset();
+      form.reset({
+        title: "",
+        description: "",
+        link: "",
+        status: "not-started",
+        project: project,
+      });
       onOpenChange(false);
     },
     onError: () => {
@@ -74,7 +82,7 @@ export function AddCardDialog({ open, onOpenChange }: AddCardDialogProps) {
   });
 
   const onSubmit = (data: InsertCard) => {
-    createCardMutation.mutate(data);
+    createCardMutation.mutate({ ...data, project });
   };
 
   const getStatusLabel = (status: string) => {

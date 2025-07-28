@@ -7,7 +7,8 @@ import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { AddCardDialog } from "./add-card-dialog";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Filter, Folder } from "lucide-react";
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<string>("ecommerce-platform");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
@@ -29,8 +31,17 @@ export function KanbanBoard() {
     })
   );
 
+  const { data: projects = [] } = useQuery<string[]>({
+    queryKey: ["/api/projects"],
+  });
+
   const { data: cards = [], isLoading } = useQuery<Card[]>({
-    queryKey: ["/api/cards"],
+    queryKey: ["/api/cards", selectedProject],
+    queryFn: async () => {
+      const response = await fetch(`/api/cards?project=${selectedProject}`);
+      if (!response.ok) throw new Error('Failed to fetch cards');
+      return response.json();
+    },
   });
 
   const updateCardMutation = useMutation({
@@ -39,7 +50,7 @@ export function KanbanBoard() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cards", selectedProject] });
       toast({
         title: "Card updated",
         description: "Card status has been updated successfully.",
@@ -99,7 +110,7 @@ export function KanbanBoard() {
               ? { ...card, status: newStatus }
               : card
           );
-          queryClient.setQueryData(["/api/cards"], updatedCards);
+          queryClient.setQueryData(["/api/cards", selectedProject], updatedCards);
           
           updateCardMutation.mutate({
             id: activeCard.id,
@@ -130,7 +141,7 @@ export function KanbanBoard() {
               });
               
               // Optimistic update
-              queryClient.setQueryData(["/api/cards"], allCardsWithNewOrder);
+              queryClient.setQueryData(["/api/cards", selectedProject], allCardsWithNewOrder);
               
               // Update the moved card's order
               const newOrder = (overIndex + 1).toString();
@@ -146,7 +157,7 @@ export function KanbanBoard() {
                 ? { ...card, status: overCard.status }
                 : card
             );
-            queryClient.setQueryData(["/api/cards"], updatedCards);
+            queryClient.setQueryData(["/api/cards", selectedProject], updatedCards);
             
             updateCardMutation.mutate({
               id: activeCard.id,
@@ -185,14 +196,32 @@ export function KanbanBoard() {
   return (
     <>
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-2">
-          <div className={cn(
-            "w-2 h-2 rounded-full",
-            isConnected ? "bg-green-500" : "bg-red-500"
-          )}></div>
-          <span className="text-sm text-gray-600">
-            {isConnected ? "Real-time updates active" : "Connecting..."}
-          </span>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              isConnected ? "bg-green-500" : "bg-red-500"
+            )}></div>
+            <span className="text-sm text-gray-600">
+              {isConnected ? "Real-time updates active" : "Connecting..."}
+            </span>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Folder className="w-4 h-4 text-gray-500" />
+            <Select value={selectedProject} onValueChange={setSelectedProject}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map(project => (
+                  <SelectItem key={project} value={project}>
+                    {project.charAt(0).toUpperCase() + project.slice(1).replace('-', ' ')}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <div className="flex items-center space-x-3">
@@ -254,6 +283,7 @@ export function KanbanBoard() {
       <AddCardDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
+        project={selectedProject}
       />
     </>
   );

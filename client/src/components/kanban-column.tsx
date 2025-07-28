@@ -42,7 +42,13 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
 
   return (
     <div className="kanban-column">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 min-h-full">
+      <div 
+        ref={setNodeRef}
+        className={cn(
+          "bg-white rounded-lg shadow-sm border border-gray-200 min-h-full transition-colors duration-200",
+          isOver && "ring-2 ring-blue-300 ring-opacity-50"
+        )}
+      >
         <div className={cn("px-4 py-3 border-b border-gray-200 rounded-t-lg", bgColor)}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -56,9 +62,8 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
         </div>
         
         <div
-          ref={setNodeRef}
           className={cn(
-            "p-4 space-y-3 min-h-[200px] transition-colors duration-200",
+            "p-4 space-y-3 min-h-[400px] transition-colors duration-200",
             isOver && "bg-blue-50"
           )}
         >
@@ -67,6 +72,11 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
               <TaskCard key={card.id} card={card} />
             ))}
           </SortableContext>
+          
+          {/* Invisible drop zone when column is full */}
+          {cards.length > 0 && (
+            <div className="h-8 w-full" />
+          )}
         </div>
       </div>
     </div>

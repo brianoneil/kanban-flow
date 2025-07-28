@@ -29,12 +29,13 @@ Preferred communication style: Simple, everyday language.
 - **Development**: In-memory storage fallback for development
 
 ### MCP Integration
-- **Local MCP Server**: Model Context Protocol server using stdio transport for Claude Desktop
-- **Remote MCP Server**: HTTP-based MCP server for production deployments
+- **Integrated MCP Server**: Model Context Protocol endpoints built into main application (recommended)
+- **Local MCP Server**: stdio transport version for Claude Desktop integration  
+- **Remote MCP Server**: Standalone HTTP-based server for separate deployment
 - **SDK**: @modelcontextprotocol/sdk for TypeScript implementation
 - **Tools**: 8 comprehensive tools for card management and movement
-- **Endpoints**: Health check, info, and MCP protocol endpoints
-- **CORS Support**: Cross-origin requests enabled for remote access
+- **Endpoints**: `/mcp/health`, `/mcp/info`, `/mcp` (JSON-RPC 2.0 protocol)
+- **Real-time**: MCP actions trigger WebSocket broadcasts for live updates
 
 ## Key Components
 
@@ -100,7 +101,8 @@ The architecture supports both development (with in-memory storage) and producti
 ## Recent Changes
 
 ### July 28, 2025
-- **Remote MCP Server**: Created HTTP-based MCP server (`mcp-remote-server.ts`) for production deployments
-- **Dual MCP Architecture**: Now supports both local (stdio) and remote (HTTP) MCP integration
-- **Production Ready**: Remote server includes health checks, CORS support, and proper error handling
-- **Test Infrastructure**: Added comprehensive test suite for remote MCP server validation
+- **Integrated MCP Server**: Built MCP endpoints directly into main application for single deployment
+- **Triple MCP Architecture**: Now supports integrated (recommended), local (stdio), and remote (HTTP) MCP
+- **Production Optimized**: Integrated server shares same port and infrastructure as main app
+- **Comprehensive Testing**: Added test suites for all MCP server variants
+- **Real-time MCP**: MCP operations trigger WebSocket broadcasts for live UI updates

@@ -3,6 +3,11 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertCardSchema, updateCardSchema } from "@shared/schema";
+import {
+  Tool,
+  CallToolResult,
+  TextContent,
+} from "@modelcontextprotocol/sdk/types.js";
 
 // WebSocket broadcast helper
 let wss: WebSocketServer;
@@ -246,6 +251,480 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ updated: results, count: results.length });
     } catch (error) {
       res.status(500).json({ message: "Failed to batch move cards" });
+    }
+  });
+
+  // ===== MCP (Model Context Protocol) Endpoints =====
+
+  // MCP Tools definition
+  const mcpTools: Tool[] = [
+    {
+      name: "get_cards",
+      description: "Get all cards or filter by status. Returns cards sorted by their order within each status.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          status: {
+            type: "string",
+            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
+            description: "Optional: filter cards by specific status"
+          }
+        },
+        additionalProperties: false
+      }
+    },
+    {
+      name: "get_cards_by_status",
+      description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values.",
+      inputSchema: {
+        type: "object",
+        properties: {},
+        additionalProperties: false
+      }
+    },
+    {
+      name: "get_card",
+      description: "Get details of a specific card by its ID.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "The ID of the card to retrieve"
+          }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
+    },
+    {
+      name: "create_card",
+      description: "Create a new card in the Kanban board.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "The title of the card"
+          },
+          description: {
+            type: "string",
+            description: "Detailed description of the card"
+          },
+          link: {
+            type: "string",
+            description: "Optional: URL link related to the card"
+          },
+          status: {
+            type: "string",
+            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
+            description: "The initial status of the card",
+            default: "not-started"
+          }
+        },
+        required: ["title", "description"],
+        additionalProperties: false
+      }
+    },
+    {
+      name: "move_card",
+      description: "Move a card to a different status and optionally specify its position within that status.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "The ID of the card to move"
+          },
+          status: {
+            type: "string",
+            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
+            description: "The target status to move the card to"
+          },
+          position: {
+            type: "number",
+            description: "Optional: position within the target status (0 = top, omit to add to end)"
+          }
+        },
+        required: ["id", "status"],
+        additionalProperties: false
+      }
+    },
+    {
+      name: "update_card",
+      description: "Update properties of an existing card.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "The ID of the card to update"
+          },
+          title: {
+            type: "string",
+            description: "Optional: new title for the card"
+          },
+          description: {
+            type: "string",
+            description: "Optional: new description for the card"
+          },
+          link: {
+            type: "string",
+            description: "Optional: new link for the card"
+          },
+          status: {
+            type: "string",
+            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
+            description: "Optional: new status for the card"
+          }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
+    },
+    {
+      name: "delete_card",
+      description: "Delete a card from the Kanban board.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description: "The ID of the card to delete"
+          }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
+    },
+    {
+      name: "batch_move_cards",
+      description: "Move multiple cards in a single operation for better performance.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          operations: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                cardId: {
+                  type: "string",
+                  description: "The ID of the card to move"
+                },
+                status: {
+                  type: "string",
+                  enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
+                  description: "The target status"
+                },
+                position: {
+                  type: "number",
+                  description: "Optional: position within the target status"
+                }
+              },
+              required: ["cardId", "status"],
+              additionalProperties: false
+            },
+            description: "Array of move operations to perform"
+          }
+        },
+        required: ["operations"],
+        additionalProperties: false
+      }
+    }
+  ];
+
+  // MCP Tool execution function
+  async function executeMcpTool(name: string, args: any): Promise<CallToolResult> {
+    try {
+      switch (name) {
+        case "get_cards": {
+          const { status } = args as { status?: string };
+          const cards = await storage.getAllCards();
+          
+          if (status) {
+            const filteredCards = cards
+              .filter(card => card.status === status)
+              .sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(filteredCards, null, 2)
+                } as TextContent
+              ]
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(cards, null, 2)
+                } as TextContent
+              ]
+            };
+          }
+        }
+        
+        case "get_cards_by_status": {
+          const cards = await storage.getAllCards();
+          const grouped = cards.reduce((acc, card) => {
+            if (!acc[card.status]) {
+              acc[card.status] = [];
+            }
+            acc[card.status].push(card);
+            return acc;
+          }, {} as Record<string, typeof cards>);
+          
+          // Sort cards within each status by order
+          Object.keys(grouped).forEach(status => {
+            grouped[status].sort((a, b) => parseInt(a.order) - parseInt(b.order));
+          });
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(grouped, null, 2)
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "get_card": {
+          const { id } = args as { id: string };
+          const card = await storage.getCard(id);
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(card, null, 2)
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "create_card": {
+          const { title, description, link, status = "not-started" } = args as {
+            title: string;
+            description: string;
+            link?: string;
+            status?: string;
+          };
+          
+          const cardData = { title, description, link, status };
+          const card = await storage.createCard(cardData);
+          
+          // Broadcast card creation
+          broadcast({ type: "CARD_CREATED", data: card });
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Card created successfully:\n${JSON.stringify(card, null, 2)}`
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "move_card": {
+          const { id, status, position } = args as {
+            id: string;
+            status: string;
+            position?: number;
+          };
+          
+          const updateData: any = { status };
+          if (position !== undefined) {
+            updateData.order = position.toString();
+          }
+          
+          const card = await storage.updateCard(id, updateData);
+          
+          // Broadcast card update
+          broadcast({ type: "CARD_UPDATED", data: card });
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Card moved successfully:\n${JSON.stringify(card, null, 2)}`
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "update_card": {
+          const { id, ...updates } = args as {
+            id: string;
+            title?: string;
+            description?: string;
+            link?: string;
+            status?: string;
+          };
+          
+          const card = await storage.updateCard(id, updates);
+          
+          // Broadcast card update
+          broadcast({ type: "CARD_UPDATED", data: card });
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Card updated successfully:\n${JSON.stringify(card, null, 2)}`
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "delete_card": {
+          const { id } = args as { id: string };
+          await storage.deleteCard(id);
+          
+          // Broadcast card deletion
+          broadcast({ type: "CARD_DELETED", data: { id } });
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Card ${id} deleted successfully`
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "batch_move_cards": {
+          const { operations } = args as { operations: Array<{ cardId: string; status: string; position?: number }> };
+          const results = [];
+          
+          for (const op of operations) {
+            const { cardId, status, position } = op;
+            
+            if (!cardId || !status) {
+              continue;
+            }
+            
+            try {
+              const updateData: any = { status };
+              if (position !== undefined) {
+                updateData.order = position.toString();
+              }
+              
+              const updatedCard = await storage.updateCard(cardId, updateData);
+              results.push(updatedCard);
+              
+              // Broadcast each card update
+              broadcast({ type: "CARD_UPDATED", data: updatedCard });
+            } catch (error) {
+              console.error(`Failed to move card ${cardId}:`, error);
+            }
+          }
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Batch move completed:\n${JSON.stringify({ updated: results, count: results.length }, null, 2)}`
+              } as TextContent
+            ]
+          };
+        }
+        
+        default:
+          throw new Error(`Tool ${name} not found`);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: ${errorMessage}`
+          } as TextContent
+        ],
+        isError: true
+      };
+    }
+  }
+
+  // MCP Health check endpoint
+  app.get('/mcp/health', (req, res) => {
+    res.json({ 
+      status: 'healthy', 
+      mcpServer: 'kanban-integrated-server',
+      version: '1.0.0',
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // MCP Info endpoint
+  app.get('/mcp/info', (req, res) => {
+    res.json({
+      name: 'Kanban MCP Integrated Server',
+      version: '1.0.0',
+      description: 'Model Context Protocol server integrated with Kanban board application',
+      tools: mcpTools.map(tool => ({
+        name: tool.name,
+        description: tool.description
+      })),
+      endpoints: {
+        health: '/mcp/health',
+        info: '/mcp/info',
+        mcp: '/mcp'
+      }
+    });
+  });
+
+  // MCP Protocol endpoint
+  app.post('/mcp', async (req, res) => {
+    try {
+      const { jsonrpc, id, method, params } = req.body;
+
+      if (jsonrpc !== "2.0") {
+        return res.status(400).json({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32600, message: "Invalid Request" }
+        });
+      }
+
+      switch (method) {
+        case "tools/list":
+          res.json({
+            jsonrpc: "2.0",
+            id,
+            result: { tools: mcpTools }
+          });
+          break;
+
+        case "tools/call":
+          const { name, arguments: args } = params;
+          const result = await executeMcpTool(name, args || {});
+          res.json({
+            jsonrpc: "2.0",
+            id,
+            result
+          });
+          break;
+
+        default:
+          res.status(404).json({
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32601, message: "Method not found" }
+          });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+        jsonrpc: "2.0",
+        id: req.body.id,
+        error: { code: -32603, message: `Internal error: ${errorMessage}` }
+      });
     }
   });
 

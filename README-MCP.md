@@ -1,9 +1,10 @@
 # Kanban MCP Server
 
-This Model Context Protocol (MCP) server provides AI agents with tools to interact with the Kanban board API. It comes in two versions:
+This Model Context Protocol (MCP) server provides AI agents with tools to interact with the Kanban board API. It comes in three versions:
 
-1. **Local MCP Server** (`mcp-server.ts`) - Uses stdio transport for local Claude Desktop integration
-2. **Remote MCP Server** (`mcp-remote-server.ts`) - HTTP-based server for production deployments
+1. **Integrated MCP Server** - Built into the main Kanban app (recommended for production)
+2. **Local MCP Server** (`mcp-server.ts`) - Uses stdio transport for local Claude Desktop integration  
+3. **Remote MCP Server** (`mcp-remote-server.ts`) - Standalone HTTP-based server
 
 ## Features
 
@@ -42,6 +43,31 @@ chmod +x mcp-server.ts
 ```
 
 ### Running the MCP Server
+
+#### Integrated MCP Server (Recommended)
+
+The MCP server is now built directly into the main Kanban application for seamless deployment:
+
+**Development Mode:**
+```bash
+npm run dev
+```
+
+**Production Mode:**
+```bash
+npm run build
+npm start
+```
+
+**MCP Endpoints (same host as main app):**
+- Health check: `http://your-app.com:5000/mcp/health`
+- Server info: `http://your-app.com:5000/mcp/info`
+- MCP endpoint: `http://your-app.com:5000/mcp`
+
+**Testing:**
+```bash
+tsx test-mcp-integrated.ts
+```
 
 #### Local MCP Server (stdio transport)
 
@@ -112,16 +138,42 @@ Add this to your Claude Desktop configuration file (`~/Library/Application Suppo
 }
 ```
 
-### Remote MCP Server
+### Integrated MCP Server
 
-For production deployments, use the HTTP-based remote server:
+For production deployments, use the integrated MCP server that runs with your main app:
+
+**MCP Client Configuration:**
+```json
+{
+  "mcpServers": {
+    "kanban": {
+      "url": "http://your-kanban-app.com:5000/mcp",
+      "type": "http"
+    }
+  }
+}
+```
+
+**Testing the Integrated Server:**
+```bash
+# Test all endpoints and tools (main app must be running)
+tsx test-mcp-integrated.ts
+
+# Or test specific endpoints
+curl http://localhost:5000/mcp/health
+curl http://localhost:5000/mcp/info
+```
+
+### Remote MCP Server (Alternative)
+
+For separate deployment, use the standalone HTTP-based remote server:
 
 **MCP Client Configuration:**
 ```json
 {
   "mcpServers": {
     "kanban-remote": {
-      "url": "http://your-mcp-server.com:3001/mcp",
+      "url": "http://your-mcp-server.com:3001/mcp", 
       "type": "http"
     }
   }
@@ -140,7 +192,8 @@ curl http://localhost:3001/info
 
 ### Other MCP Clients
 
-- **Local (stdio):** `tsx /path/to/your/project/mcp-server.ts`
+- **Integrated (HTTP):** Connect to `http://your-app:5000/mcp` using HTTP transport (recommended)
+- **Local (stdio):** `tsx /path/to/your/project/mcp-server.ts`  
 - **Remote (HTTP):** Connect to `http://your-server:3001/mcp` using HTTP transport
 
 ## Tool Examples
@@ -216,7 +269,11 @@ The Kanban board includes WebSocket support for real-time updates. When cards ar
 
 ### Testing the MCP Server
 
-You can test the MCP server manually using the MCP TypeScript SDK's testing utilities, or by integrating it with an MCP client like Claude Desktop.
+You can test the MCP servers using the provided test scripts:
+
+- **Integrated Server:** `tsx test-mcp-integrated.ts` (tests endpoints at localhost:5000/mcp)
+- **Remote Server:** `tsx test-mcp-remote.ts` (tests standalone server at localhost:3001/mcp)
+- **Local Server:** Integrate with MCP clients like Claude Desktop using stdio transport
 
 ### Adding New Tools
 

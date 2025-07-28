@@ -84,11 +84,12 @@
 
 /* Kanban specific styles */
 .kanban-column {
-  @apply transition-all duration-200;
+  @apply transition-all duration-300 ease-in-out;
 }
 
 .task-card {
-  @apply shadow-sm;
+  @apply shadow-sm transition-all duration-300 ease-in-out;
+  transform-origin: center;
 }
 
 .task-card:hover {
@@ -98,9 +99,30 @@
 
 /* Drag and drop animations */
 .sortable-ghost {
-  @apply opacity-50;
+  @apply opacity-30;
 }
 
 .sortable-chosen {
-  @apply scale-105 rotate-2;
+  @apply scale-105 rotate-1;
+}
+
+/* Smooth card transitions */
+.task-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Prevent layout shift during drag */
+[data-dnd-kit-dropped] {
+  animation: card-drop 0.3s ease-out;
+}
+
+@keyframes card-drop {
+  0% {
+    transform: scale(1.05) rotate(2deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
 }

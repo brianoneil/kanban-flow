@@ -56,9 +56,9 @@ export function TaskCard({ card }: TaskCardProps) {
       {...attributes}
       {...listeners}
       className={cn(
-        "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105",
+        "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02]",
         getBorderColor(),
-        isDragging && "opacity-50 scale-105 rotate-2"
+        isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50"
       )}
     >
       <div className="flex items-start justify-between mb-2">

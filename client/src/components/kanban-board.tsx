@@ -84,58 +84,80 @@ export function KanbanBoard() {
     const activeId = active.id.toString();
     const overId = over.id.toString();
     
-    // If we're dropping on a column
-    if (KANBAN_STATUSES.includes(overId as KanbanStatus)) {
-      const newStatus = overId as KanbanStatus;
-      if (activeCard.status !== newStatus) {
-        updateCardMutation.mutate({
-          id: activeCard.id,
-          updates: { status: newStatus }
-        });
-      }
-    } else {
-      // We're dropping on a card
-      const overCard = cards.find(card => card.id === overId);
-      
-      if (overCard) {
-        // Same column reordering
-        if (activeCard.status === overCard.status) {
-          const statusCards = getCardsByStatus(activeCard.status);
-          const activeIndex = statusCards.findIndex(card => card.id === activeId);
-          const overIndex = statusCards.findIndex(card => card.id === overId);
+    // Immediately apply optimistic updates for smoother UX
+    const optimisticUpdate = () => {
+      // If we're dropping on a column
+      if (KANBAN_STATUSES.includes(overId as KanbanStatus)) {
+        const newStatus = overId as KanbanStatus;
+        if (activeCard.status !== newStatus) {
+          // Optimistically move card to new column
+          const updatedCards = cards.map(card => 
+            card.id === activeCard.id 
+              ? { ...card, status: newStatus }
+              : card
+          );
+          queryClient.setQueryData(["/api/cards"], updatedCards);
           
-          if (activeIndex !== overIndex) {
-            const reorderedCards = arrayMove(statusCards, activeIndex, overIndex);
-            
-            // Update the order for all cards in this status
-            const allCardsWithNewOrder = cards.map(card => {
-              if (card.status === activeCard.status) {
-                const newIndex = reorderedCards.findIndex(c => c.id === card.id);
-                return { ...card, order: (newIndex + 1).toString() };
-              }
-              return card;
-            });
-            
-            // Optimistic update
-            queryClient.setQueryData(["/api/cards"], allCardsWithNewOrder);
-            
-            // Update the moved card's order
-            const newOrder = (overIndex + 1).toString();
-            updateCardMutation.mutate({
-              id: activeCard.id,
-              updates: { order: newOrder }
-            });
-          }
-        } else {
-          // Different column - move to that column
           updateCardMutation.mutate({
             id: activeCard.id,
-            updates: { status: overCard.status }
+            updates: { status: newStatus }
           });
         }
+      } else {
+        // We're dropping on a card
+        const overCard = cards.find(card => card.id === overId);
+        
+        if (overCard) {
+          // Same column reordering
+          if (activeCard.status === overCard.status) {
+            const statusCards = getCardsByStatus(activeCard.status);
+            const activeIndex = statusCards.findIndex(card => card.id === activeId);
+            const overIndex = statusCards.findIndex(card => card.id === overId);
+            
+            if (activeIndex !== overIndex) {
+              const reorderedCards = arrayMove(statusCards, activeIndex, overIndex);
+              
+              // Update the order for all cards in this status
+              const allCardsWithNewOrder = cards.map(card => {
+                if (card.status === activeCard.status) {
+                  const newIndex = reorderedCards.findIndex(c => c.id === card.id);
+                  return { ...card, order: (newIndex + 1).toString() };
+                }
+                return card;
+              });
+              
+              // Optimistic update
+              queryClient.setQueryData(["/api/cards"], allCardsWithNewOrder);
+              
+              // Update the moved card's order
+              const newOrder = (overIndex + 1).toString();
+              updateCardMutation.mutate({
+                id: activeCard.id,
+                updates: { order: newOrder }
+              });
+            }
+          } else {
+            // Different column - move to that column
+            const updatedCards = cards.map(card => 
+              card.id === activeCard.id 
+                ? { ...card, status: overCard.status }
+                : card
+            );
+            queryClient.setQueryData(["/api/cards"], updatedCards);
+            
+            updateCardMutation.mutate({
+              id: activeCard.id,
+              updates: { status: overCard.status }
+            });
+          }
+        }
       }
-    }
+    };
 
+    // Apply optimistic update immediately
+    optimisticUpdate();
+    
+    // Clear active card immediately since we're using optimistic updates
     setActiveCard(null);
   };
 
@@ -197,12 +219,14 @@ export function KanbanBoard() {
           })}
         </div>
         
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeCard ? (
             <motion.div
-              initial={{ rotate: 5, scale: 1.05 }}
-              animate={{ rotate: 5, scale: 1.05 }}
-              className="opacity-90"
+              initial={{ rotate: 2, scale: 1.05, opacity: 0.9 }}
+              animate={{ rotate: 2, scale: 1.05, opacity: 0.9 }}
+              exit={{ scale: 1, rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="shadow-2xl"
             >
               <TaskCard card={activeCard} />
             </motion.div>

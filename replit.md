@@ -22,11 +22,11 @@ Preferred communication style: Simple, everyday language.
 
 ### Backend Architecture
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: PostgreSQL with Drizzle ORM (migrated from in-memory storage)
 - **Database Provider**: Neon Database (serverless PostgreSQL)
 - **API Style**: RESTful API endpoints with comprehensive CRUD operations
 - **Real-time**: WebSocket server broadcasting live updates
-- **Development**: In-memory storage fallback for development
+- **Production-Ready**: Full database persistence with proper schema management
 
 ### MCP Integration
 - **Integrated MCP Server**: Model Context Protocol endpoints built into main application (recommended)

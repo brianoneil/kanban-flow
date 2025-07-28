@@ -45,6 +45,22 @@ Open the configuration file and add the Kanban MCP server:
 }
 ```
 
+**Recommended configuration for latest Claude Desktop:**
+```json
+{
+  "mcpServers": {
+    "kanban-board": {
+      "command": "node",
+      "args": ["-e", "console.log('Use HTTP transport')"],
+      "transport": {
+        "type": "http",
+        "url": "https://kanban-flow-boneil.replit.app/mcp"
+      }
+    }
+  }
+}
+```
+
 **Alternative simpler configuration:**
 ```json
 {
@@ -99,25 +115,43 @@ Try these commands in Claude Desktop:
 
 ### Issue: Claude says no tools are available
 
-**Solution 1: Check configuration file**
+**Solution 1: Use the transport configuration**
+Try the "transport" format instead of the simple URL format:
+```json
+{
+  "mcpServers": {
+    "kanban-board": {
+      "command": "node",
+      "args": ["-e", "console.log('HTTP transport')"],
+      "transport": {
+        "type": "http", 
+        "url": "https://kanban-flow-boneil.replit.app/mcp"
+      }
+    }
+  }
+}
+```
+
+**Solution 2: Check configuration file**
 - Ensure the JSON syntax is correct (no trailing commas)
 - Verify the URL is exactly: `https://kanban-flow-boneil.replit.app/mcp`
-- Make sure the file is saved
+- Make sure the file is saved properly
 
-**Solution 2: Restart Claude Desktop**
-- Completely quit Claude Desktop
+**Solution 3: Restart Claude Desktop properly**
+- Completely quit Claude Desktop (check Activity Monitor/Task Manager)
 - Wait 10 seconds
 - Reopen Claude Desktop
+- Wait for it to fully load before testing
 
-**Solution 3: Test the MCP endpoint manually**
+**Solution 4: Test the MCP endpoint manually**
 Run this in terminal/command prompt:
 ```bash
 curl -X POST https://kanban-flow-boneil.replit.app/mcp \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "test", "version": "1.0.0"}}}'
 ```
 
-You should see a JSON response with the list of tools.
+You should see a JSON response with server info.
 
 ### Issue: Connection timeout or network error
 

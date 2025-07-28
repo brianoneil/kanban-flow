@@ -721,6 +721,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/mcp', async (req, res) => {
     try {
       const { jsonrpc, id, method, params } = req.body;
+      
+      // Debug logging
+      console.log(`[MCP] Request: ${method}`, params ? JSON.stringify(params) : 'no params');
 
       if (jsonrpc !== "2.0") {
         return res.status(400).json({
@@ -731,6 +734,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       switch (method) {
+        case "initialize":
+          // MCP initialization handshake
+          res.json({
+            jsonrpc: "2.0",
+            id,
+            result: {
+              protocolVersion: "2024-11-05",
+              capabilities: {
+                tools: {}
+              },
+              serverInfo: {
+                name: "kanban-integrated-server",
+                version: "1.0.0"
+              }
+            }
+          });
+          break;
+
         case "tools/list":
           res.json({
             jsonrpc: "2.0",
@@ -749,18 +770,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           break;
 
+        case "ping":
+          // Handle ping requests
+          res.json({
+            jsonrpc: "2.0",
+            id,
+            result: {}
+          });
+          break;
+
+        case "notifications/initialized":
+          // Handle initialization notification
+          res.json({
+            jsonrpc: "2.0",
+            id,
+            result: {}
+          });
+          break;
+
         default:
+          console.log(`[MCP] Unknown method: ${method}`);
           res.status(404).json({
             jsonrpc: "2.0",
             id,
-            error: { code: -32601, message: "Method not found" }
+            error: { code: -32601, message: `Method not found: ${method}` }
           });
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MCP] Error:`, errorMessage);
       res.status(500).json({
         jsonrpc: "2.0",
-        id: req.body.id,
+        id: req.body?.id || null,
         error: { code: -32603, message: `Internal error: ${errorMessage}` }
       });
     }

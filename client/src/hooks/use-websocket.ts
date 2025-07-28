@@ -26,6 +26,7 @@ export function useWebSocket() {
       wsRef.current.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('WebSocket message received:', message.type, message.data);
           
           switch (message.type) {
             case 'INITIAL_DATA':
@@ -34,14 +35,16 @@ export function useWebSocket() {
               break;
               
             case 'CARD_CREATED':
-              // Add new card to the cache
+              // Add new card to the cache and invalidate queries
               queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {
                 return [...oldData, message.data];
               });
+              queryClient.invalidateQueries({ queryKey: ['/api/cards'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
               break;
               
             case 'CARD_UPDATED':
-              // Update existing card in cache
+              // Update existing card in cache and invalidate queries
               queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {
                 const oldCard = oldData.find(card => card.id === message.data.id);
                 const statusChanged = oldCard && oldCard.status !== message.data.status;
@@ -54,6 +57,7 @@ export function useWebSocket() {
                   } : card
                 );
               });
+              queryClient.invalidateQueries({ queryKey: ['/api/cards'] });
               
               // Clear the remote update flag after animation
               setTimeout(() => {
@@ -70,10 +74,12 @@ export function useWebSocket() {
               break;
               
             case 'CARD_DELETED':
-              // Remove card from cache
+              // Remove card from cache and invalidate queries
               queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {
                 return oldData.filter(card => card.id !== message.data.id);
               });
+              queryClient.invalidateQueries({ queryKey: ['/api/cards'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
               break;
               
             default:

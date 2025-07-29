@@ -27,13 +27,16 @@ export function extractTasksFromMarkdown(markdown: string): TaskItem[] {
   
   while ((match = taskRegex.exec(markdown)) !== null) {
     const text = match[2].trim();
+    const isCompleted = match[1].toLowerCase() === 'x';
+    
     tasks.push({
       id: text.toLowerCase().replace(/[^a-z0-9]/g, ''), // Generate stable ID from text
       text: text,
-      completed: match[1].toLowerCase() === 'x'
+      completed: isCompleted
     });
   }
   
+  console.log('Extracted tasks from markdown:', tasks);
   return tasks;
 }
 

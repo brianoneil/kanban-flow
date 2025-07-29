@@ -25,35 +25,50 @@ export function InteractiveMarkdown({ content, tasks, onTaskToggle, isExpanded }
           ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-4">{children}</ul>,
           ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
           li: ({ children, node }) => {
-            // Check if this is a task list item
-            const textContent = extractTextFromChildren(children);
-            const isTaskItem = /^\[([x\s])\]/.test(textContent);
+            // Check if this is a task list item with remarkGfm
+            const isTaskListItem = Array.isArray(node?.properties?.className) 
+              ? node.properties.className.includes('task-list-item')
+              : typeof node?.properties?.className === 'string' 
+              ? node.properties.className.includes('task-list-item')
+              : false;
             
-            if (isTaskItem) {
-              const match = textContent.match(/^\[([x\s])\]\s*(.+)$/);
-              if (match) {
-                const isChecked = match[1].toLowerCase() === 'x';
-                const taskText = match[2].trim();
-                const task = tasks.find(t => t.text === taskText);
-                
-                return (
-                  <li className="mb-1 flex items-center space-x-2 p-1 rounded hover:bg-gray-50 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={task?.completed || isChecked}
-                      onChange={(e) => onTaskToggle(taskText, e.target.checked)}
-                      className="w-4 h-4 accent-blue-500 rounded flex-shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className={cn(
-                      "text-sm flex-1",
-                      (task?.completed || isChecked) ? "line-through text-gray-500" : "text-gray-700"
-                    )}>
-                      {taskText}
-                    </span>
-                  </li>
-                );
-              }
+            if (isTaskListItem) {
+              // Extract the text content from children
+              const textContent = extractTextFromChildren(children);
+              const taskText = textContent.replace(/^\[([x\s])\]\s*/, '').trim();
+              const task = tasks.find(t => t.text === taskText);
+              
+              return (
+                <li className="mb-1 flex items-center space-x-2 p-1 rounded hover:bg-gray-50 transition-colors task-list-item">
+                  {React.Children.map(children, (child) => {
+                    if (React.isValidElement(child) && child.type === 'input') {
+                      return (
+                        <input
+                          type="checkbox"
+                          checked={task?.completed ?? child.props.checked}
+                          onChange={(e) => {
+                            console.log('Task toggle:', taskText, e.target.checked);
+                            onTaskToggle(taskText, e.target.checked);
+                          }}
+                          className="w-4 h-4 accent-blue-500 rounded flex-shrink-0"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      );
+                    }
+                    if (typeof child === 'string') {
+                      return (
+                        <span className={cn(
+                          "text-sm flex-1",
+                          task?.completed ? "line-through text-gray-500" : "text-gray-700"
+                        )}>
+                          {child}
+                        </span>
+                      );
+                    }
+                    return child;
+                  })}
+                </li>
+              );
             }
             return <li className="mb-1">{children}</li>;
           },

@@ -32,11 +32,15 @@ export function TaskCard({ card }: TaskCardProps) {
   const markdownTasks = extractTasksFromMarkdown(card.description);
   const storedTasks = parseTaskList(card.taskList);
   
-  // Merge markdown tasks with stored completion status
+  console.log('Card:', card.id, 'Markdown tasks:', markdownTasks.length, 'Stored tasks:', storedTasks.length);
+  
+  // Merge markdown tasks with stored completion status, preferring stored state
   const tasks = markdownTasks.map(markdownTask => {
     const storedTask = storedTasks.find(stored => stored.text === markdownTask.text);
     return storedTask || markdownTask;
   });
+  
+  console.log('Final merged tasks:', tasks);
   
   const taskProgress = calculateTaskProgress(tasks);
   const showProgress = tasks.length > 0;

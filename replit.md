@@ -107,6 +107,10 @@ The architecture supports both development (with in-memory storage) and producti
 - **Improved Card Layout**: Cards now use proper flex layouts, titles never get cropped, and long descriptions show expand/collapse buttons
 - **Real-time Updates**: Fixed WebSocket broadcasting for database operations to ensure live UI updates
 - **Create Project UI**: Added project creation functionality with automatic URL navigation
+- **Dark Mode Implementation**: Comprehensive dark theme with theme provider, localStorage persistence, and smooth transitions
+- **Resizable Columns**: Added column resize functionality with drag handles (280px-600px range)
+- **Responsive Layout**: Horizontal scrolling container prevents column overlap on narrow screens
+- **Theme Toggle**: Positioned in top-right header with sun/moon icon animations
 
 ### July 28, 2025
 - **Integrated MCP Server**: Built MCP endpoints directly into main application for single deployment

@@ -11,7 +11,7 @@ import { CreateProjectDialog } from "./create-project-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Filter, Folder, FolderPlus } from "lucide-react";
-import { ThemeToggle } from "./theme-toggle";
+
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -282,7 +282,6 @@ export function KanbanBoard() {
         </div>
         
         <div className="flex items-center space-x-3">
-          <ThemeToggle />
           <Button
             onClick={() => setShowAddDialog(true)}
             className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 text-white font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"

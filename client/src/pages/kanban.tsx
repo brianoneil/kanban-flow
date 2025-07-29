@@ -1,4 +1,5 @@
 import { KanbanBoard } from "@/components/kanban-board";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Kanban() {
   return (
@@ -9,6 +10,7 @@ export default function Kanban() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Kanban Board</h1>
             <span className="text-sm text-gray-500 dark:text-gray-400">Multi-Project Management</span>
           </div>
+          <ThemeToggle />
         </div>
       </header>
       <main className="max-w-7xl mx-auto px-6 py-8">

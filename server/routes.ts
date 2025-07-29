@@ -328,17 +328,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     {
       name: "create_card",
-      description: "Create a new card in the Kanban board for a specific project.",
+      description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure.",
       inputSchema: {
         type: "object",
         properties: {
           title: {
             type: "string",
-            description: "The title of the card"
+            description: "The title of the card - keep concise and descriptive"
           },
           description: {
             type: "string",
-            description: "Detailed description of the card"
+            description: "Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), and code blocks (```language code```) for enhanced readability and structure."
           },
           project: {
             type: "string",
@@ -385,7 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     {
       name: "update_card",
-      description: "Update properties of an existing card.",
+      description: "Update properties of an existing card. Use Markdown formatting in the description for better readability.",
       inputSchema: {
         type: "object",
         properties: {
@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           description: {
             type: "string",
-            description: "Optional: new description for the card"
+            description: "Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, and code blocks for better structure and readability."
           },
           link: {
             type: "string",

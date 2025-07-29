@@ -100,6 +100,14 @@ The architecture supports both development (with in-memory storage) and producti
 
 ## Recent Changes
 
+### July 29, 2025
+- **Enhanced Card Design**: Added expandable/collapsible card views with smooth animations
+- **Markdown Support**: Full Markdown formatting support in card descriptions using react-markdown
+- **MCP Markdown Integration**: Updated MCP tools to encourage agents to use Markdown formatting
+- **Improved Card Layout**: Cards now use proper flex layouts, titles never get cropped, and long descriptions show expand/collapse buttons
+- **Real-time Updates**: Fixed WebSocket broadcasting for database operations to ensure live UI updates
+- **Create Project UI**: Added project creation functionality with automatic URL navigation
+
 ### July 28, 2025
 - **Integrated MCP Server**: Built MCP endpoints directly into main application for single deployment
 - **Triple MCP Architecture**: Now supports integrated (recommended), local (stdio), and remote (HTTP) MCP

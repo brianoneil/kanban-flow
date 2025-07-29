@@ -52,13 +52,13 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
 
   const getHeaderGradient = () => {
     const gradients = {
-      gray: "bg-gradient-to-r from-gray-50 to-gray-100",
-      red: "bg-gradient-to-r from-red-50 to-red-100",
-      blue: "bg-gradient-to-r from-blue-50 to-blue-100",
-      green: "bg-gradient-to-r from-green-50 to-green-100",
-      purple: "bg-gradient-to-r from-purple-50 to-purple-100",
+      gray: "bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700",
+      red: "bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30",
+      blue: "bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30",
+      green: "bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30",
+      purple: "bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/30",
     };
-    return gradients[color as keyof typeof gradients] || "bg-gradient-to-r from-gray-50 to-gray-100";
+    return gradients[color as keyof typeof gradients] || "bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700";
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -99,11 +99,11 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
           isOver && "ring-2 ring-blue-400 ring-opacity-60 shadow-xl scale-[1.02]"
         )}
       >
-        <div className={cn("px-5 py-4 border-b border-white/20", getHeaderGradient())}>
+        <div className={cn("px-5 py-4 border-b border-white/20 dark:border-gray-600/20", getHeaderGradient())}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className={cn("w-4 h-4 rounded-full", getStatusDotColor())}></div>
-              <h3 className="font-bold text-gray-800 text-sm tracking-wide uppercase">{title}</h3>
+              <h3 className="font-bold text-gray-800 dark:text-gray-200 text-sm tracking-wide uppercase">{title}</h3>
             </div>
             <span className={cn("text-xs px-3 py-1.5 rounded-full font-bold", getCountBadgeColor())}>
               {count}
@@ -113,8 +113,8 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
         
         <div
           className={cn(
-            "p-5 min-h-[500px] transition-all duration-300",
-            isOver && "bg-gradient-to-b from-blue-50/50 to-blue-100/30"
+            "p-5 min-h-[500px] transition-all duration-300 bg-white/50 dark:bg-gray-800/50",
+            isOver && "bg-gradient-to-b from-blue-50/50 to-blue-100/30 dark:from-blue-900/30 dark:to-blue-800/20"
           )}
         >
           <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
@@ -155,7 +155,7 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
         )}
         title="Drag to resize column"
       >
-        <div className="w-1 h-12 bg-gray-400 rounded-full hover:bg-blue-500 transition-colors shadow-sm"></div>
+        <div className="w-1 h-12 bg-gray-400 dark:bg-gray-500 rounded-full hover:bg-blue-500 dark:hover:bg-blue-400 transition-colors shadow-sm"></div>
       </div>
     </div>
   );

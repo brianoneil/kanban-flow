@@ -11,6 +11,7 @@ import { CreateProjectDialog } from "./create-project-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Filter, Folder, FolderPlus } from "lucide-react";
+import { ThemeToggle } from "./theme-toggle";
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -249,20 +250,20 @@ export function KanbanBoard() {
               "w-2 h-2 rounded-full",
               isConnected ? "bg-green-500" : "bg-red-500"
             )}></div>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-gray-600 dark:text-gray-300">
               {isConnected ? "Real-time updates active" : "Connecting..."}
             </span>
           </div>
           
           <div className="flex items-center space-x-2">
-            <Folder className="w-4 h-4 text-gray-500" />
+            <Folder className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             <Select value={selectedProject} onValueChange={handleProjectChange}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                 {projects.map(project => (
-                  <SelectItem key={project} value={project}>
+                  <SelectItem key={project} value={project} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                     {project.charAt(0).toUpperCase() + project.slice(1).replace('-', ' ')}
                   </SelectItem>
                 ))}
@@ -272,7 +273,7 @@ export function KanbanBoard() {
               variant="outline"
               size="sm"
               onClick={() => setShowCreateProjectDialog(true)}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               title="Create new project"
             >
               <FolderPlus className="w-4 h-4" />
@@ -281,14 +282,15 @@ export function KanbanBoard() {
         </div>
         
         <div className="flex items-center space-x-3">
+          <ThemeToggle />
           <Button
             onClick={() => setShowAddDialog(true)}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700 text-white font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Card
           </Button>
-          <Button variant="outline" className="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 border-gray-300 shadow-md hover:shadow-lg transition-all duration-300">
+          <Button variant="outline" className="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 shadow-md hover:shadow-lg transition-all duration-300">
             <Filter className="w-4 h-4" />
           </Button>
         </div>

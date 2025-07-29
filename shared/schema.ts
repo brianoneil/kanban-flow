@@ -11,6 +11,7 @@ export const cards = pgTable("cards", {
   status: text("status").notNull().default("not-started"),
   order: text("order").notNull().default("0"),
   project: text("project").notNull().default("default"),
+  taskList: text("task_list"), // JSON array of task items with completion status
 });
 
 export const insertCardSchema = createInsertSchema(cards).omit({

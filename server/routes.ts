@@ -338,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           description: {
             type: "string",
-            description: "Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), and code blocks (```language code```) for enhanced readability and structure."
+            description: "Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."
           },
           project: {
             type: "string",
@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
           description: {
             type: "string",
-            description: "Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, and code blocks for better structure and readability."
+            description: "Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."
           },
           link: {
             type: "string",

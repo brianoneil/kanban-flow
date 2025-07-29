@@ -36,7 +36,7 @@ export function extractTasksFromMarkdown(markdown: string): TaskItem[] {
     });
   }
   
-  console.log('Extracted tasks from markdown:', tasks);
+
   return tasks;
 }
 

@@ -44,7 +44,6 @@ export function InteractiveMarkdown({ content, tasks, onTaskToggle, isExpanded }
                     type="checkbox"
                     checked={task?.completed ?? false}
                     onChange={(e) => {
-                      console.log('Task toggle:', taskText, e.target.checked);
                       onTaskToggle(taskText, e.target.checked);
                     }}
                     className="w-3.5 h-3.5 accent-blue-500 rounded flex-shrink-0"

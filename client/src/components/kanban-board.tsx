@@ -279,31 +279,32 @@ export function KanbanBoard() {
         </div>
       </div>
 
-      <LayoutGroup>
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          collisionDetection={closestCenter}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 min-h-screen">
-          {KANBAN_STATUSES.map(status => {
-            const config = getColumnConfig(status);
-            const columnCards = getCardsByStatus(status);
-            
-            return (
-              <KanbanColumn
-                key={status}
-                id={status}
-                title={config.title}
-                color={config.color}
-                bgColor={config.bgColor}
-                cards={columnCards}
-                count={columnCards.length}
-              />
-            );
-          })}
-        </div>
+      <div className="overflow-x-auto">
+        <LayoutGroup>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            collisionDetection={closestCenter}
+          >
+            <div className="flex gap-6 min-h-screen pb-4" style={{ minWidth: '1500px' }}>
+            {KANBAN_STATUSES.map(status => {
+              const config = getColumnConfig(status);
+              const columnCards = getCardsByStatus(status);
+              
+              return (
+                <KanbanColumn
+                  key={status}
+                  id={status}
+                  title={config.title}
+                  color={config.color}
+                  bgColor={config.bgColor}
+                  cards={columnCards}
+                  count={columnCards.length}
+                />
+              );
+            })}
+          </div>
         
         <DragOverlay dropAnimation={null}>
           {activeCard ? (
@@ -318,8 +319,9 @@ export function KanbanBoard() {
             </motion.div>
           ) : null}
         </DragOverlay>
-        </DndContext>
-      </LayoutGroup>
+          </DndContext>
+        </LayoutGroup>
+      </div>
 
       <AddCardDialog
         open={showAddDialog}

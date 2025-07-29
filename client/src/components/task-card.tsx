@@ -22,7 +22,7 @@ interface TaskCardProps {
 export function TaskCard({ card }: TaskCardProps) {
   const [isExploding, setIsExploding] = useState(false);
   const [shouldHide, setShouldHide] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(card.status === "in-progress");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -193,7 +193,12 @@ export function TaskCard({ card }: TaskCardProps) {
                 e.stopPropagation();
                 setIsExpanded(!isExpanded);
               }}
-              className="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1 font-medium transition-colors duration-150"
+              className={cn(
+                "mt-2 text-xs flex items-center space-x-1 font-medium transition-colors duration-150",
+                card.status === "in-progress" 
+                  ? "text-blue-700 hover:text-blue-900" 
+                  : "text-blue-600 hover:text-blue-800"
+              )}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >

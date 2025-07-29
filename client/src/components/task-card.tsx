@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion } from "framer-motion";
-import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ExplosionAnimation } from "./explosion-animation";
@@ -20,6 +20,7 @@ interface TaskCardProps {
 export function TaskCard({ card }: TaskCardProps) {
   const [isExploding, setIsExploding] = useState(false);
   const [shouldHide, setShouldHide] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -110,10 +111,11 @@ export function TaskCard({ card }: TaskCardProps) {
         {...attributes}
         {...listeners}
         className={cn(
-          "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02] group relative",
+          "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02] group relative flex flex-col",
           getBorderColor(),
           isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50",
-          card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75"
+          card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75",
+          isExpanded && "min-h-fit"
         )}
       >
         {/* Delete button - only show on hover */}
@@ -126,13 +128,49 @@ export function TaskCard({ card }: TaskCardProps) {
         </button>
 
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-medium text-gray-900 flex-1 line-clamp-2 pr-8">{card.title}</h4>
+          <h4 className="font-medium text-gray-900 flex-1 pr-8 break-words">{card.title}</h4>
           <GripVertical className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
         </div>
         
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">{card.description}</p>
+        <div className="mb-3 flex-1">
+          <motion.div
+            initial={false}
+            animate={{ 
+              height: isExpanded ? "auto" : "auto"
+            }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+          >
+            <p className={cn(
+              "text-sm text-gray-600 break-words",
+              !isExpanded && "line-clamp-2"
+            )}>
+              {card.description}
+            </p>
+          </motion.div>
+          
+          {/* Show expand/collapse button only if content is long enough */}
+          {card.description && card.description.length > 100 && (
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+              className="mt-2 text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1 font-medium transition-colors duration-150"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <span>{isExpanded ? "Show less" : "Show more"}</span>
+              <motion.div
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ChevronDown className="w-3 h-3" />
+              </motion.div>
+            </motion.button>
+          )}
+        </div>
         
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-auto">
           {card.link ? (
             <a
               href={card.link}

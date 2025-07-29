@@ -26,9 +26,10 @@ export function extractTasksFromMarkdown(markdown: string): TaskItem[] {
   let match;
   
   while ((match = taskRegex.exec(markdown)) !== null) {
+    const text = match[2].trim();
     tasks.push({
-      id: Math.random().toString(36).substr(2, 9),
-      text: match[2].trim(),
+      id: text.toLowerCase().replace(/[^a-z0-9]/g, ''), // Generate stable ID from text
+      text: text,
       completed: match[1].toLowerCase() === 'x'
     });
   }

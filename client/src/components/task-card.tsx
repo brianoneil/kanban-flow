@@ -6,6 +6,7 @@ import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ExplosionAnimation } from "./explosion-animation";
 import { parseTaskList, calculateTaskProgress, updateTaskCompletion, hasTaskList, serializeTaskList, extractTasksFromMarkdown, TaskItem } from "@/lib/task-utils";
+import { InteractiveMarkdown } from "./interactive-markdown";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,10 +28,16 @@ export function TaskCard({ card }: TaskCardProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Parse task list and extract tasks from markdown if needed
-  const storedTasks = parseTaskList(card.taskList);
+  // Extract tasks from markdown and sync with stored task list
   const markdownTasks = extractTasksFromMarkdown(card.description);
-  const tasks = storedTasks.length > 0 ? storedTasks : markdownTasks;
+  const storedTasks = parseTaskList(card.taskList);
+  
+  // Merge markdown tasks with stored completion status
+  const tasks = markdownTasks.map(markdownTask => {
+    const storedTask = storedTasks.find(stored => stored.text === markdownTask.text);
+    return storedTask || markdownTask;
+  });
+  
   const taskProgress = calculateTaskProgress(tasks);
   const showProgress = tasks.length > 0;
 
@@ -93,8 +100,10 @@ export function TaskCard({ card }: TaskCardProps) {
     deleteMutation.mutate();
   };
 
-  const handleTaskToggle = (taskId: string, completed: boolean) => {
-    const updatedTasks = updateTaskCompletion(tasks, taskId, completed);
+  const handleTaskToggle = (taskText: string, completed: boolean) => {
+    const updatedTasks = tasks.map(task => 
+      task.text === taskText ? { ...task, completed } : task
+    );
     updateTaskMutation.mutate(updatedTasks);
   };
 
@@ -206,69 +215,12 @@ export function TaskCard({ card }: TaskCardProps) {
             }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
           >
-            <div className={cn(
-              "text-sm text-gray-600 break-words prose prose-sm max-w-none",
-              !isExpanded && "line-clamp-2"
-            )}>
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // Override styles for better card appearance
-                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                  ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-4">{children}</ul>,
-                  ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
-                  li: ({ children, node }) => {
-                    // Check if this is a task list item
-                    if (node?.properties?.className?.includes('task-list-item')) {
-                      return <li className="mb-1 task-list-item">{children}</li>;
-                    }
-                    return <li className="mb-1">{children}</li>;
-                  },
-                  input: ({ type, checked, ...props }) => {
-                    if (type === 'checkbox') {
-                      // Find the corresponding task by text content
-                      const taskIndex = tasks.findIndex((task, index) => index === (props as any).taskIndex);
-                      const task = tasks[taskIndex];
-                      
-                      return (
-                        <input
-                          type="checkbox"
-                          checked={task?.completed || false}
-                          onChange={(e) => {
-                            if (task) {
-                              handleTaskToggle(task.id, e.target.checked);
-                            }
-                          }}
-                          className="mr-2 accent-blue-500"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      );
-                    }
-                    return <input type={type} checked={checked} {...props} />;
-                  },
-                  code: ({ children }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">{children}</code>,
-                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                  em: ({ children }) => <em className="italic">{children}</em>,
-                  h1: ({ children }) => <h1 className="text-base font-semibold mb-1">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-sm font-semibold mb-1">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-sm font-medium mb-1">{children}</h3>,
-                  blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-300 pl-2 italic">{children}</blockquote>,
-                  a: ({ href, children }) => (
-                    <a 
-                      href={href} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-blue-600 hover:text-blue-800 underline"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {children}
-                    </a>
-                  ),
-                }}
-              >
-                {card.description}
-              </ReactMarkdown>
-            </div>
+            <InteractiveMarkdown
+              content={card.description}
+              tasks={tasks}
+              onTaskToggle={handleTaskToggle}
+              isExpanded={isExpanded}
+            />
           </motion.div>
           
           {/* Show expand/collapse button only if content is long enough */}
@@ -297,38 +249,7 @@ export function TaskCard({ card }: TaskCardProps) {
             </motion.button>
           )}
 
-          {/* Interactive Task List */}
-          {tasks.length > 0 && isExpanded && (
-            <div className="mt-3 border-t border-gray-200 pt-3">
-              <div className="space-y-2">
-                {tasks.map((task, index) => (
-                  <motion.div
-                    key={task.id}
-                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-50 transition-colors"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={(e) => handleTaskToggle(task.id, e.target.checked)}
-                      className="w-4 h-4 accent-blue-500 rounded"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <span className={cn(
-                      "text-sm flex-1",
-                      task.completed ? "line-through text-gray-500" : "text-gray-700"
-                    )}>
-                      {task.text}
-                    </span>
-                    {task.completed && (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                    )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          )}
+
         </div>
         
         <div className="flex items-center justify-between mt-auto">

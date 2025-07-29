@@ -21,6 +21,13 @@ export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
+  const [columnWidths, setColumnWidths] = useState<Record<KanbanStatus, number>>({
+    "not-started": 320,
+    "blocked": 320,
+    "in-progress": 320,
+    "complete": 320,
+    "verified": 320,
+  });
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
@@ -57,6 +64,14 @@ export function KanbanBoard() {
   const handleProjectCreated = (projectName: string) => {
     setSelectedProject(projectName);
     setLocation(`/project/${projectName}`);
+  };
+  
+  // Handle column width changes
+  const handleColumnWidthChange = (status: KanbanStatus, newWidth: number) => {
+    setColumnWidths(prev => ({
+      ...prev,
+      [status]: newWidth
+    }));
   };
   
   const sensors = useSensors(
@@ -287,7 +302,7 @@ export function KanbanBoard() {
             onDragEnd={handleDragEnd}
             collisionDetection={closestCenter}
           >
-            <div className="flex gap-6 min-h-screen pb-4" style={{ minWidth: '1500px' }}>
+            <div className="flex gap-6 min-h-screen pb-4">
             {KANBAN_STATUSES.map(status => {
               const config = getColumnConfig(status);
               const columnCards = getCardsByStatus(status);
@@ -301,6 +316,8 @@ export function KanbanBoard() {
                   bgColor={config.bgColor}
                   cards={columnCards}
                   count={columnCards.length}
+                  width={columnWidths[status]}
+                  onWidthChange={(newWidth) => handleColumnWidthChange(status, newWidth)}
                 />
               );
             })}

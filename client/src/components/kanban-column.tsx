@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TaskCard } from "./task-card";
 import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { GripVertical } from "lucide-react";
+import { useState, useRef } from "react";
 
 interface KanbanColumnProps {
   id: KanbanStatus;
@@ -12,12 +14,19 @@ interface KanbanColumnProps {
   bgColor: string;
   cards: Card[];
   count: number;
+  width?: number;
+  onWidthChange?: (width: number) => void;
 }
 
-export function KanbanColumn({ id, title, color, bgColor, cards, count }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 320, onWidthChange }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
   });
+  
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef(0);
+  const startWidthRef = useRef(0);
 
   const getStatusDotColor = () => {
     const colors = {
@@ -52,8 +61,37 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
     return gradients[color as keyof typeof gradients] || "bg-gradient-to-r from-gray-50 to-gray-100";
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    startXRef.current = e.clientX;
+    startWidthRef.current = width;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - startXRef.current;
+      const newWidth = Math.max(280, Math.min(600, startWidthRef.current + deltaX));
+      
+      if (onWidthChange) {
+        onWidthChange(newWidth);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   return (
-    <div className="kanban-column rounded-xl overflow-hidden min-w-[300px] flex-1">
+    <div 
+      className="kanban-column rounded-xl overflow-hidden flex-shrink-0 relative group"
+      style={{ width: `${width}px` }}
+    >
       <div 
         ref={setNodeRef}
         className={cn(
@@ -105,6 +143,19 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
           {/* Drop zone for empty columns or end of column */}
           <div className="h-16 w-full" />
         </div>
+      </div>
+      
+      {/* Resize handle */}
+      <div
+        ref={resizeRef}
+        onMouseDown={handleMouseDown}
+        className={cn(
+          "absolute top-0 right-0 w-3 h-full cursor-col-resize opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-10 bg-transparent hover:bg-blue-50/20",
+          isResizing && "opacity-100 bg-blue-50/30"
+        )}
+        title="Drag to resize column"
+      >
+        <div className="w-1 h-12 bg-gray-400 rounded-full hover:bg-blue-500 transition-colors shadow-sm"></div>
       </div>
     </div>
   );

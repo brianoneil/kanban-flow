@@ -158,7 +158,7 @@ export function TaskCard({ card }: TaskCardProps) {
         {...attributes}
         {...listeners}
         className={cn(
-          "task-card rounded-xl p-5 cursor-move group relative flex flex-col",
+          "task-card rounded-xl p-5 cursor-move group relative flex flex-col min-w-[280px]",
           getBorderColor(),
           isDragging && "opacity-60 scale-105 rotate-2 shadow-2xl z-50",
           card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75 animate-pulse",

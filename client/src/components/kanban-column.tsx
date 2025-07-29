@@ -53,7 +53,7 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
   };
 
   return (
-    <div className="kanban-column rounded-xl overflow-hidden">
+    <div className="kanban-column rounded-xl overflow-hidden min-w-[300px] flex-1">
       <div 
         ref={setNodeRef}
         className={cn(

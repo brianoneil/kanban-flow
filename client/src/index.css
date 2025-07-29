@@ -126,3 +126,36 @@
     opacity: 1;
   }
 }
+
+/* Markdown prose styles for cards */
+.task-card .prose {
+  @apply text-gray-600;
+}
+
+.task-card .prose p:last-child {
+  @apply mb-0;
+}
+
+.task-card .prose pre {
+  @apply bg-gray-50 text-xs p-2 rounded border overflow-x-auto;
+}
+
+.task-card .prose code {
+  @apply bg-gray-100 text-gray-800 px-1 py-0.5 rounded text-xs font-mono;
+}
+
+.task-card .prose blockquote {
+  @apply border-l-2 border-blue-200 pl-3 italic text-gray-700;
+}
+
+.task-card .prose ul, .task-card .prose ol {
+  @apply text-xs;
+}
+
+.task-card .prose h1, .task-card .prose h2, .task-card .prose h3 {
+  @apply text-gray-800;
+}
+
+.task-card .prose a {
+  @apply text-blue-600 hover:text-blue-800 no-underline hover:underline;
+}

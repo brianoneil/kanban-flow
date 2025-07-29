@@ -9,6 +9,8 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface TaskCardProps {
   card: Card & { 
@@ -82,7 +84,7 @@ export function TaskCard({ card }: TaskCardProps) {
       "complete": "border-green-200",
       "verified": "border-purple-200",
     };
-    return colors[card.status] || "border-gray-200";
+    return colors[card.status as KanbanStatus] || "border-gray-200";
   };
 
   const getStatusIcon = () => {
@@ -140,12 +142,41 @@ export function TaskCard({ card }: TaskCardProps) {
             }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
           >
-            <p className={cn(
-              "text-sm text-gray-600 break-words",
+            <div className={cn(
+              "text-sm text-gray-600 break-words prose prose-sm max-w-none",
               !isExpanded && "line-clamp-2"
             )}>
-              {card.description}
-            </p>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // Override styles for better card appearance
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-4">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
+                  li: ({ children }) => <li className="mb-1">{children}</li>,
+                  code: ({ children }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">{children}</code>,
+                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  em: ({ children }) => <em className="italic">{children}</em>,
+                  h1: ({ children }) => <h1 className="text-base font-semibold mb-1">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-sm font-semibold mb-1">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-medium mb-1">{children}</h3>,
+                  blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-300 pl-2 italic">{children}</blockquote>,
+                  a: ({ href, children }) => (
+                    <a 
+                      href={href} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-blue-600 hover:text-blue-800 underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {children}
+                    </a>
+                  ),
+                }}
+              >
+                {card.description}
+              </ReactMarkdown>
+            </div>
           </motion.div>
           
           {/* Show expand/collapse button only if content is long enough */}

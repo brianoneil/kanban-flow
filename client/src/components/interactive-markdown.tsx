@@ -22,7 +22,7 @@ export function InteractiveMarkdown({ content, tasks, onTaskToggle, isExpanded }
         components={{
           // Override styles for better card appearance
           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-          ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-2 space-y-1">{children}</ul>,
+          ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-2">{children}</ul>,
           ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
           li: ({ children, node }) => {
             // Check if this is a task list item with remarkGfm
@@ -39,7 +39,7 @@ export function InteractiveMarkdown({ content, tasks, onTaskToggle, isExpanded }
               const task = tasks.find(t => t.text === taskText);
               
               return (
-                <li className="mb-1 flex items-start gap-2 p-1 rounded hover:bg-gray-50 transition-colors task-list-item">
+                <li className="mb-1 flex items-center gap-1.5 hover:bg-gray-50 transition-colors task-list-item">
                   <input
                     type="checkbox"
                     checked={task?.completed ?? false}
@@ -47,11 +47,11 @@ export function InteractiveMarkdown({ content, tasks, onTaskToggle, isExpanded }
                       console.log('Task toggle:', taskText, e.target.checked);
                       onTaskToggle(taskText, e.target.checked);
                     }}
-                    className="w-4 h-4 mt-0.5 accent-blue-500 rounded flex-shrink-0"
+                    className="w-3.5 h-3.5 accent-blue-500 rounded flex-shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   />
                   <span className={cn(
-                    "text-sm leading-5 flex-1",
+                    "text-xs leading-4 flex-1",
                     task?.completed ? "line-through text-gray-500" : "text-gray-700"
                   )}>
                     {taskText}
@@ -59,7 +59,7 @@ export function InteractiveMarkdown({ content, tasks, onTaskToggle, isExpanded }
                 </li>
               );
             }
-            return <li className="mb-1 ml-4">{children}</li>;
+            return <li className="mb-1 ml-4 text-xs">{children}</li>;
           },
           code: ({ children }) => <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">{children}</code>,
           strong: ({ children }) => <strong className="font-semibold">{children}</strong>,

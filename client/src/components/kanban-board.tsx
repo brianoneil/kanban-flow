@@ -105,11 +105,11 @@ export function KanbanBoard() {
 
   const getColumnConfig = (status: KanbanStatus) => {
     const configs = {
-      "not-started": { title: "Not Started", color: "gray", bgColor: "bg-gray-50" },
-      "blocked": { title: "Blocked", color: "red", bgColor: "bg-red-50" },
-      "in-progress": { title: "In Progress", color: "blue", bgColor: "bg-blue-50" },
-      "complete": { title: "Complete", color: "green", bgColor: "bg-green-50" },
-      "verified": { title: "Verified", color: "purple", bgColor: "bg-purple-50" },
+      "not-started": { title: "Not Started", color: "gray", bgColor: "bg-gradient-to-r from-gray-50 to-slate-50" },
+      "blocked": { title: "Blocked", color: "red", bgColor: "bg-gradient-to-r from-red-50 to-rose-50" },
+      "in-progress": { title: "In Progress", color: "blue", bgColor: "bg-gradient-to-r from-blue-50 to-indigo-50" },
+      "complete": { title: "Complete", color: "green", bgColor: "bg-gradient-to-r from-green-50 to-emerald-50" },
+      "verified": { title: "Verified", color: "purple", bgColor: "bg-gradient-to-r from-purple-50 to-violet-50" },
     };
     return configs[status];
   };
@@ -268,12 +268,12 @@ export function KanbanBoard() {
         <div className="flex items-center space-x-3">
           <Button
             onClick={() => setShowAddDialog(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors duration-200"
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Card
           </Button>
-          <Button variant="outline" className="bg-gray-100 hover:bg-gray-200 text-gray-700">
+          <Button variant="outline" className="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 text-gray-700 border-gray-300 shadow-md hover:shadow-lg transition-all duration-300">
             <Filter className="w-4 h-4" />
           </Button>
         </div>

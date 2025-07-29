@@ -21,42 +21,53 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
 
   const getStatusDotColor = () => {
     const colors = {
-      gray: "bg-gray-500",
-      red: "bg-red-500", 
-      blue: "bg-blue-500",
-      green: "bg-green-500",
-      purple: "bg-purple-500",
+      gray: "bg-gradient-to-r from-gray-400 to-gray-500 shadow-md",
+      red: "bg-gradient-to-r from-red-400 to-red-500 shadow-md", 
+      blue: "bg-gradient-to-r from-blue-400 to-blue-500 shadow-md",
+      green: "bg-gradient-to-r from-green-400 to-green-500 shadow-md",
+      purple: "bg-gradient-to-r from-purple-400 to-purple-500 shadow-md",
     };
-    return colors[color as keyof typeof colors] || "bg-gray-500";
+    return colors[color as keyof typeof colors] || "bg-gradient-to-r from-gray-400 to-gray-500 shadow-md";
   };
 
   const getCountBadgeColor = () => {
     const colors = {
-      gray: "bg-gray-100 text-gray-600",
-      red: "bg-red-100 text-red-600",
-      blue: "bg-blue-100 text-blue-600", 
-      green: "bg-green-100 text-green-600",
-      purple: "bg-purple-100 text-purple-600",
+      gray: "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-sm",
+      red: "bg-gradient-to-r from-red-100 to-red-200 text-red-700 shadow-sm",
+      blue: "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 shadow-sm", 
+      green: "bg-gradient-to-r from-green-100 to-green-200 text-green-700 shadow-sm",
+      purple: "bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 shadow-sm",
     };
-    return colors[color as keyof typeof colors] || "bg-gray-100 text-gray-600";
+    return colors[color as keyof typeof colors] || "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 shadow-sm";
+  };
+
+  const getHeaderGradient = () => {
+    const gradients = {
+      gray: "bg-gradient-to-r from-gray-50 to-gray-100",
+      red: "bg-gradient-to-r from-red-50 to-red-100",
+      blue: "bg-gradient-to-r from-blue-50 to-blue-100",
+      green: "bg-gradient-to-r from-green-50 to-green-100",
+      purple: "bg-gradient-to-r from-purple-50 to-purple-100",
+    };
+    return gradients[color as keyof typeof gradients] || "bg-gradient-to-r from-gray-50 to-gray-100";
   };
 
   return (
-    <div className="kanban-column">
+    <div className="kanban-column rounded-xl overflow-hidden">
       <div 
         ref={setNodeRef}
         className={cn(
-          "bg-white rounded-lg shadow-sm border border-gray-200 min-h-full transition-colors duration-200",
-          isOver && "ring-2 ring-blue-300 ring-opacity-50"
+          "min-h-full transition-all duration-300 ease-in-out",
+          isOver && "ring-2 ring-blue-400 ring-opacity-60 shadow-xl scale-[1.02]"
         )}
       >
-        <div className={cn("px-4 py-3 border-b border-gray-200 rounded-t-lg", bgColor)}>
+        <div className={cn("px-5 py-4 border-b border-white/20", getHeaderGradient())}>
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className={cn("w-3 h-3 rounded-full", getStatusDotColor())}></div>
-              <h3 className="font-semibold text-gray-800">{title}</h3>
+            <div className="flex items-center space-x-3">
+              <div className={cn("w-4 h-4 rounded-full", getStatusDotColor())}></div>
+              <h3 className="font-bold text-gray-800 text-sm tracking-wide uppercase">{title}</h3>
             </div>
-            <span className={cn("text-xs px-2 py-1 rounded-full font-medium", getCountBadgeColor())}>
+            <span className={cn("text-xs px-3 py-1.5 rounded-full font-bold", getCountBadgeColor())}>
               {count}
             </span>
           </div>
@@ -64,8 +75,8 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count }: Kanban
         
         <div
           className={cn(
-            "p-4 min-h-[400px] transition-colors duration-200",
-            isOver && "bg-blue-50"
+            "p-5 min-h-[500px] transition-all duration-300",
+            isOver && "bg-gradient-to-b from-blue-50/50 to-blue-100/30"
           )}
         >
           <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>

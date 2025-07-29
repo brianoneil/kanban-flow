@@ -78,13 +78,13 @@ export function TaskCard({ card }: TaskCardProps) {
 
   const getBorderColor = () => {
     const colors: Record<KanbanStatus, string> = {
-      "not-started": "border-gray-200",
-      "blocked": "border-red-200", 
-      "in-progress": "border-blue-200",
-      "complete": "border-green-200",
-      "verified": "border-purple-200",
+      "not-started": "border-l-4 border-l-gray-400",
+      "blocked": "border-l-4 border-l-red-500", 
+      "in-progress": "border-l-4 border-l-blue-500",
+      "complete": "border-l-4 border-l-green-500",
+      "verified": "border-l-4 border-l-purple-500",
     };
-    return colors[card.status as KanbanStatus] || "border-gray-200";
+    return colors[card.status as KanbanStatus] || "border-l-4 border-l-gray-400";
   };
 
   const getStatusIcon = () => {
@@ -113,10 +113,10 @@ export function TaskCard({ card }: TaskCardProps) {
         {...attributes}
         {...listeners}
         className={cn(
-          "task-card bg-white border rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-300 hover:scale-[1.02] group relative flex flex-col",
+          "task-card rounded-xl p-5 cursor-move group relative flex flex-col",
           getBorderColor(),
-          isDragging && "opacity-60 scale-105 rotate-1 shadow-lg z-50",
-          card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75",
+          isDragging && "opacity-60 scale-105 rotate-2 shadow-2xl z-50",
+          card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75 animate-pulse",
           isExpanded && "min-h-fit"
         )}
       >

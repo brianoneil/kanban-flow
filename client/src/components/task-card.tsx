@@ -120,18 +120,25 @@ export function TaskCard({ card }: TaskCardProps) {
           isExpanded && "min-h-fit"
         )}
       >
-        {/* Delete button - only show on hover */}
-        <button
-          onClick={handleDelete}
-          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-red-100 text-red-500 hover:text-red-700 z-10"
-          title="Delete card"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-medium text-gray-900 flex-1 pr-8 break-words">{card.title}</h4>
-          <GripVertical className="w-4 h-4 text-gray-400 ml-2 flex-shrink-0" />
+          <h4 className="font-medium text-gray-900 flex-1 pr-2 break-words">{card.title}</h4>
+          
+          {/* Action buttons container */}
+          <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+            {/* Delete button - only show on hover */}
+            <button
+              onClick={handleDelete}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-red-100 text-red-500 hover:text-red-700 z-10"
+              title="Delete card"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+            
+            {/* Drag handle */}
+            <div className="p-1">
+              <GripVertical className="w-4 h-4 text-gray-400" />
+            </div>
+          </div>
         </div>
         
         <div className="mb-3 flex-1">

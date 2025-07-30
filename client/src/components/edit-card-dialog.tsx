@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,9 +88,12 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-2xl">
         <DialogHeader>
           <DialogTitle>Edit Card</DialogTitle>
+          <DialogDescription>
+            Modify the card details below. All fields support rich formatting.
+          </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
@@ -102,7 +105,11 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter card title" {...field} />
+                    <Input 
+                      placeholder="Enter card title" 
+                      className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -118,7 +125,7 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
                   <FormControl>
                     <Textarea 
                       placeholder="Enter card description (Markdown supported)"
-                      className="min-h-[100px]"
+                      className="min-h-[150px] resize-y bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                       {...field}
                     />
                   </FormControl>
@@ -137,6 +144,7 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
                     <Input 
                       placeholder="https://example.com" 
                       type="url"
+                      className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                       {...field}
                     />
                   </FormControl>
@@ -153,7 +161,7 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
                   <FormLabel>Status</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                     </FormControl>
@@ -170,15 +178,20 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
               )}
             />
             
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="flex justify-end space-x-2 pt-6 border-t border-gray-200 dark:border-gray-700 mt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
+                className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={updateMutation.isPending}>
+              <Button 
+                type="submit" 
+                disabled={updateMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
                 {updateMutation.isPending ? "Updating..." : "Update Card"}
               </Button>
             </div>

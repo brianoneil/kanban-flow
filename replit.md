@@ -101,9 +101,12 @@ The architecture supports both development (with in-memory storage) and producti
 ## Recent Changes
 
 ### July 30, 2025
+- **Full-Screen Card View**: Added comprehensive view mode with large dialog showing complete card details in readable format
+- **Enhanced Card Actions**: Cards now show view (purple eye), edit (green pencil), copy (blue copy), and delete buttons on hover
+- **Rich Content Display**: View dialog uses proper Markdown rendering with enhanced typography and formatting
+- **Integrated Actions**: View dialog includes quick access to edit, copy, and external link functionality
 - **Card Editing**: Added comprehensive card editing functionality with dialog form supporting title, description, link, and status changes
 - **Clipboard Copy**: Added one-click copy functionality to export card content as Markdown format
-- **Enhanced Card Actions**: Cards now show edit (green pencil) and copy (blue copy icon) buttons on hover alongside existing delete option
 - **Visual Feedback**: Copy button shows checkmark confirmation and toast notification when successful
 - **Column Width Persistence**: Added localStorage persistence for column widths - resized columns now remember their width when you reload the page
 - **Column Width Reset**: Added reset button (rotate icon) in header to restore all columns to default 320px width

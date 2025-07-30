@@ -1,12 +1,13 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp, Edit3, Copy, Check } from "lucide-react";
+import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp, Edit3, Copy, Check, Eye } from "lucide-react";
 import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ExplosionAnimation } from "./explosion-animation";
 import { parseTaskList, calculateTaskProgress, updateTaskCompletion, hasTaskList, serializeTaskList, extractTasksFromMarkdown, TaskItem } from "@/lib/task-utils";
 import { InteractiveMarkdown } from "./interactive-markdown";
+import { ViewCardDialog } from "./view-card-dialog";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,6 +28,7 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
   const [shouldHide, setShouldHide] = useState(false);
   const [isExpanded, setIsExpanded] = useState(card.status === "in-progress");
   const [justCopied, setJustCopied] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -208,6 +210,15 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
               )}
             </button>
 
+            {/* View button - only show on hover */}
+            <button
+              onClick={() => setShowViewDialog(true)}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 z-10"
+              title="View card details"
+            >
+              <Eye className="w-3 h-3" />
+            </button>
+
             {/* Edit button - only show on hover */}
             <button
               onClick={handleEdit}
@@ -325,6 +336,14 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
           </div>
         </div>
       </div>
+      
+      {/* View Dialog */}
+      <ViewCardDialog
+        card={card}
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+        onEditCard={onEdit}
+      />
     </ExplosionAnimation>
   );
 }

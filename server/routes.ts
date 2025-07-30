@@ -151,6 +151,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk delete cards by IDs
+  app.delete("/api/cards/bulk", async (req, res) => {
+    try {
+      const { ids } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'ids must be a non-empty array' });
+      }
+      
+      // Delete each card
+      const deletedIds = [];
+      for (const id of ids) {
+        try {
+          const deleted = await storage.deleteCard(id);
+          if (deleted) {
+            deletedIds.push(id);
+          }
+        } catch (error) {
+          console.error(`Error deleting card ${id}:`, error);
+          // Continue with other cards even if one fails
+        }
+      }
+      
+      // Broadcast deletions to all WebSocket clients
+      if (deletedIds.length > 0) {
+        broadcast({
+          type: 'CARDS_BULK_DELETED',
+          data: deletedIds
+        });
+      }
+      
+      res.json({ 
+        deletedCount: deletedIds.length,
+        deletedIds,
+        requestedCount: ids.length
+      });
+    } catch (error) {
+      console.error('Error bulk deleting cards:', error);
+      res.status(500).json({ error: 'Failed to bulk delete cards' });
+    }
+  });
+
   // Move card to specific status (simplified endpoint)
   app.post("/api/cards/:id/move", async (req, res) => {
     try {
@@ -431,6 +473,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     },
     {
+      name: "bulk_delete_cards",
+      description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          ids: {
+            type: "array",
+            items: {
+              type: "string"
+            },
+            description: "Array of card IDs to delete",
+            minItems: 1
+          }
+        },
+        required: ["ids"],
+        additionalProperties: false
+      }
+    },
+    {
       name: "batch_move_cards",
       description: "Move multiple cards in a single operation for better performance.",
       inputSchema: {
@@ -639,6 +700,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
               {
                 type: "text",
                 text: `Card ${id} deleted successfully`
+              } as TextContent
+            ]
+          };
+        }
+        
+        case "bulk_delete_cards": {
+          const { ids } = args as { ids: string[] };
+          
+          if (!Array.isArray(ids) || ids.length === 0) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: "Error: ids must be a non-empty array"
+                } as TextContent
+              ],
+              isError: true
+            };
+          }
+          
+          const deletedIds = [];
+          const failedIds = [];
+          
+          for (const id of ids) {
+            try {
+              const deleted = await storage.deleteCard(id);
+              if (deleted) {
+                deletedIds.push(id);
+              } else {
+                failedIds.push(id);
+              }
+            } catch (error) {
+              console.error(`Error deleting card ${id}:`, error);
+              failedIds.push(id);
+            }
+          }
+          
+          // Broadcast bulk deletion
+          if (deletedIds.length > 0) {
+            broadcast({
+              type: 'CARDS_BULK_DELETED',
+              data: deletedIds
+            });
+          }
+          
+          const result = {
+            deletedCount: deletedIds.length,
+            deletedIds,
+            failedCount: failedIds.length,
+            failedIds,
+            requestedCount: ids.length
+          };
+          
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Bulk delete completed:\n${JSON.stringify(result, null, 2)}`
               } as TextContent
             ]
           };

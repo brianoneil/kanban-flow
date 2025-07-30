@@ -101,6 +101,9 @@ The architecture supports both development (with in-memory storage) and producti
 ## Recent Changes
 
 ### July 30, 2025
+- **Bulk Delete API & MCP Tool**: Added efficient bulk card deletion via DELETE /api/cards/bulk endpoint and bulk_delete_cards MCP tool
+- **Enhanced MCP Capabilities**: MCP now supports deleting multiple cards by ID array for better automation efficiency
+- **Real-time Bulk Updates**: Bulk deletions broadcast CARDS_BULK_DELETED events to update all connected clients
 - **Full-Screen Card View**: Added comprehensive view mode with large dialog showing complete card details in readable format
 - **Enhanced Card Actions**: Cards now show view (purple eye), edit (green pencil), copy (blue copy), and delete buttons on hover
 - **Rich Content Display**: View dialog uses proper Markdown rendering with enhanced typography and formatting

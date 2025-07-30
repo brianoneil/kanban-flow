@@ -10,7 +10,7 @@ import { AddCardDialog } from "./add-card-dialog";
 import { CreateProjectDialog } from "./create-project-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter, Folder, FolderPlus } from "lucide-react";
+import { Plus, Filter, Folder, FolderPlus, RotateCcw } from "lucide-react";
 
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -18,17 +18,51 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { cn } from "@/lib/utils";
 
+// Default column widths
+const DEFAULT_COLUMN_WIDTHS: Record<KanbanStatus, number> = {
+  "not-started": 320,
+  "blocked": 320,
+  "in-progress": 320,
+  "complete": 320,
+  "verified": 320,
+};
+
+// Load saved column widths from localStorage
+const loadColumnWidths = (): Record<KanbanStatus, number> => {
+  try {
+    const saved = localStorage.getItem('kanban-column-widths');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Validate that all required statuses are present and values are numbers
+      const isValid = KANBAN_STATUSES.every(status => 
+        typeof parsed[status] === 'number' && 
+        parsed[status] >= 280 && 
+        parsed[status] <= 600
+      );
+      if (isValid) {
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load column widths from localStorage:', error);
+  }
+  return DEFAULT_COLUMN_WIDTHS;
+};
+
+// Save column widths to localStorage
+const saveColumnWidths = (widths: Record<KanbanStatus, number>) => {
+  try {
+    localStorage.setItem('kanban-column-widths', JSON.stringify(widths));
+  } catch (error) {
+    console.warn('Failed to save column widths to localStorage:', error);
+  }
+};
+
 export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
-  const [columnWidths, setColumnWidths] = useState<Record<KanbanStatus, number>>({
-    "not-started": 320,
-    "blocked": 320,
-    "in-progress": 320,
-    "complete": 320,
-    "verified": 320,
-  });
+  const [columnWidths, setColumnWidths] = useState<Record<KanbanStatus, number>>(loadColumnWidths);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
@@ -69,10 +103,22 @@ export function KanbanBoard() {
   
   // Handle column width changes
   const handleColumnWidthChange = (status: KanbanStatus, newWidth: number) => {
-    setColumnWidths(prev => ({
-      ...prev,
+    const updatedWidths = {
+      ...columnWidths,
       [status]: newWidth
-    }));
+    };
+    setColumnWidths(updatedWidths);
+    saveColumnWidths(updatedWidths);
+  };
+
+  // Reset all column widths to defaults
+  const resetColumnWidths = () => {
+    setColumnWidths(DEFAULT_COLUMN_WIDTHS);
+    saveColumnWidths(DEFAULT_COLUMN_WIDTHS);
+    toast({
+      title: "Column widths reset",
+      description: "All columns have been reset to default width.",
+    });
   };
   
   const sensors = useSensors(
@@ -172,7 +218,7 @@ export function KanbanBoard() {
         if (overCard) {
           // Same column reordering
           if (activeCard.status === overCard.status) {
-            const statusCards = getCardsByStatus(activeCard.status);
+            const statusCards = getCardsByStatus(activeCard.status as KanbanStatus);
             const activeIndex = statusCards.findIndex(card => card.id === activeId);
             const overIndex = statusCards.findIndex(card => card.id === overId);
             
@@ -288,6 +334,14 @@ export function KanbanBoard() {
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Card
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={resetColumnWidths}
+            className="bg-gradient-to-r from-orange-100 to-orange-200 hover:from-orange-200 hover:to-orange-300 dark:from-orange-700 dark:to-orange-600 dark:hover:from-orange-600 dark:hover:to-orange-500 text-orange-700 dark:text-orange-200 border-orange-300 dark:border-orange-600 shadow-md hover:shadow-lg transition-all duration-300"
+            title="Reset column widths to default"
+          >
+            <RotateCcw className="w-4 h-4" />
           </Button>
           <Button variant="outline" className="bg-gradient-to-r from-gray-100 to-gray-200 hover:from-gray-200 hover:to-gray-300 dark:from-gray-700 dark:to-gray-600 dark:hover:from-gray-600 dark:hover:to-gray-500 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 shadow-md hover:shadow-lg transition-all duration-300">
             <Filter className="w-4 h-4" />

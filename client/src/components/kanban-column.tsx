@@ -16,9 +16,10 @@ interface KanbanColumnProps {
   count: number;
   width?: number;
   onWidthChange?: (width: number) => void;
+  onEditCard?: (card: Card) => void;
 }
 
-export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 320, onWidthChange }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 320, onWidthChange, onEditCard }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: id,
   });
@@ -133,7 +134,7 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
                       scale: { duration: 0.3 }
                     }}
                   >
-                    <TaskCard card={card} />
+                    <TaskCard card={card} onEdit={onEditCard} />
                   </motion.div>
                 ))}
               </AnimatePresence>

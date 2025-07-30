@@ -1,7 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp, Edit3, Copy, Check } from "lucide-react";
 import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ExplosionAnimation } from "./explosion-animation";
@@ -19,12 +19,14 @@ interface TaskCardProps {
     _remoteUpdate?: boolean; 
     _statusChanged?: boolean; 
   };
+  onEdit?: (card: Card) => void;
 }
 
-export function TaskCard({ card }: TaskCardProps) {
+export function TaskCard({ card, onEdit }: TaskCardProps) {
   const [isExploding, setIsExploding] = useState(false);
   const [shouldHide, setShouldHide] = useState(false);
   const [isExpanded, setIsExpanded] = useState(card.status === "in-progress");
+  const [justCopied, setJustCopied] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -107,6 +109,33 @@ export function TaskCard({ card }: TaskCardProps) {
     updateTaskMutation.mutate(updatedTasks);
   };
 
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit(card);
+    }
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const cardText = `# ${card.title}\n\n${card.description}${card.link ? `\n\nLink: ${card.link}` : ''}`;
+      await navigator.clipboard.writeText(cardText);
+      setJustCopied(true);
+      toast({
+        title: "Copied to clipboard",
+        description: "Card content has been copied as Markdown.",
+      });
+      setTimeout(() => setJustCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy to clipboard. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Hide the card completely after explosion
   if (shouldHide) {
     return null;
@@ -166,6 +195,28 @@ export function TaskCard({ card }: TaskCardProps) {
           
           {/* Action buttons container */}
           <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+            {/* Copy button - only show on hover */}
+            <button
+              onClick={handleCopy}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 z-10"
+              title="Copy card content"
+            >
+              {justCopied ? (
+                <Check className="w-3 h-3 text-green-500" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
+            </button>
+
+            {/* Edit button - only show on hover */}
+            <button
+              onClick={handleEdit}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 z-10"
+              title="Edit card"
+            >
+              <Edit3 className="w-3 h-3" />
+            </button>
+            
             {/* Delete button - only show on hover */}
             <button
               onClick={handleDelete}

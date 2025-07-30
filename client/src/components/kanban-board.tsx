@@ -8,6 +8,7 @@ import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { AddCardDialog } from "./add-card-dialog";
 import { CreateProjectDialog } from "./create-project-dialog";
+import { EditCardDialog } from "./edit-card-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Filter, Folder, FolderPlus, RotateCcw } from "lucide-react";
@@ -62,6 +63,8 @@ export function KanbanBoard() {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [columnWidths, setColumnWidths] = useState<Record<KanbanStatus, number>>(loadColumnWidths);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -119,6 +122,12 @@ export function KanbanBoard() {
       title: "Column widths reset",
       description: "All columns have been reset to default width.",
     });
+  };
+
+  // Handle card editing
+  const handleEditCard = (card: Card) => {
+    setEditingCard(card);
+    setShowEditDialog(true);
   };
   
   const sensors = useSensors(
@@ -373,6 +382,7 @@ export function KanbanBoard() {
                   count={columnCards.length}
                   width={columnWidths[status]}
                   onWidthChange={(newWidth) => handleColumnWidthChange(status, newWidth)}
+                  onEditCard={handleEditCard}
                 />
               );
             })}
@@ -406,6 +416,19 @@ export function KanbanBoard() {
         onOpenChange={setShowCreateProjectDialog}
         onProjectCreated={handleProjectCreated}
       />
+
+      {editingCard && (
+        <EditCardDialog
+          card={editingCard}
+          open={showEditDialog}
+          onOpenChange={(open) => {
+            setShowEditDialog(open);
+            if (!open) {
+              setEditingCard(null);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

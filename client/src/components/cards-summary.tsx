@@ -3,9 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff, Download, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Download, RefreshCw, Move } from "lucide-react";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { queryClient } from "@/lib/queryClient";
+import Draggable from "react-draggable";
 
 interface CardSummary {
   id: string;
@@ -38,6 +39,7 @@ const statusLabels = {
 
 export function CardsSummary({ selectedProject, className }: CardsSummaryProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   
   const { data: summary = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/cards/summary', selectedProject],
@@ -92,88 +94,101 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
 
   if (!isVisible) {
     return (
-      <div className={`fixed top-4 right-4 z-50 ${className}`}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsVisible(true)}
-          className="shadow-lg"
-        >
-          <Eye className="h-4 w-4 mr-2" />
-          Show Summary
-        </Button>
-      </div>
+      <Draggable
+        position={position}
+        onStop={(e, data) => setPosition({ x: data.x, y: data.y })}
+      >
+        <div className={`fixed top-4 right-4 z-50 ${className}`} style={{ position: 'fixed', transform: `translate(${position.x}px, ${position.y}px)` }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsVisible(true)}
+            className="shadow-lg"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Show Summary
+          </Button>
+        </div>
+      </Draggable>
     );
   }
 
   return (
-    <div className={`fixed top-4 right-4 z-50 w-80 ${className}`}>
-      <Card className="shadow-lg border border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">
-              Cards Summary
-              {totalCards > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {totalCards}
-                </Badge>
-              )}
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => refetch()}
-                disabled={isLoading}
-                className="h-8 w-8 p-0"
-              >
-                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={downloadMarkdown}
-                className="h-8 w-8 p-0"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsVisible(false)}
-                className="h-8 w-8 p-0"
-              >
-                <EyeOff className="h-4 w-4" />
-              </Button>
+    <Draggable
+      position={position}
+      onStop={(e, data) => setPosition({ x: data.x, y: data.y })}
+      handle=".drag-handle"
+    >
+      <div className={`fixed top-4 right-4 z-50 w-80 ${className}`} style={{ position: 'fixed', transform: `translate(${position.x}px, ${position.y}px)` }}>
+        <Card className="shadow-lg border border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Move className="h-4 w-4 text-muted-foreground cursor-move drag-handle" />
+                <CardTitle className="text-lg">
+                  Cards Summary
+                  {totalCards > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {totalCards}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                  className="h-8 w-8 p-0"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={downloadMarkdown}
+                  className="h-8 w-8 p-0"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsVisible(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  <EyeOff className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-          {selectedProject && (
-            <p className="text-sm text-muted-foreground">
-              Project: {selectedProject}
-            </p>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-4 max-h-96 overflow-y-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-              <span className="text-sm text-muted-foreground">Loading...</span>
-            </div>
-          ) : totalCards === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No cards found
-            </p>
-          ) : (
-            Object.entries(groupedCards).map(([status, cards]) => (
-              <div key={status} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Badge 
-                    className={statusColors[status as keyof typeof statusColors]} 
-                    variant="secondary"
-                  >
+            {selectedProject && (
+              <p className="text-sm text-foreground/70 font-medium">
+                Project: {selectedProject}
+              </p>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4 max-h-96 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                <span className="text-sm text-foreground/70">Loading...</span>
+              </div>
+            ) : totalCards === 0 ? (
+              <p className="text-sm text-foreground/70 text-center py-4">
+                No cards found
+              </p>
+            ) : (
+              Object.entries(groupedCards).map(([status, cards]) => (
+                <div key={status} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge 
+                      className={statusColors[status as keyof typeof statusColors]} 
+                      variant="secondary"
+                    >
                     {statusLabels[status as keyof typeof statusLabels] || status}
                   </Badge>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-foreground/70 font-medium">
                     {cards.length}
                   </span>
                 </div>
@@ -187,7 +202,7 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
                         {card.title}
                       </div>
                       {card.project && card.project !== selectedProject && (
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-xs text-foreground/60 font-medium">
                           {card.project}
                         </div>
                       )}
@@ -199,6 +214,7 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </Draggable>
   );
 }

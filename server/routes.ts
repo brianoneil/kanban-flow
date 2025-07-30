@@ -52,6 +52,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get cards summary (titles and statuses only)
+  app.get("/api/cards/summary", async (req, res) => {
+    try {
+      const { project } = req.query;
+      const cards = await storage.getAllCards(project as string);
+      
+      // Create summary with just title and status
+      const summary = cards.map(card => ({
+        id: card.id,
+        title: card.title,
+        status: card.status,
+        project: card.project,
+        order: card.order
+      }));
+      
+      res.json(summary);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get cards summary" });
+    }
+  });
+
+  // Get cards summary as markdown
+  app.get("/api/cards/summary/markdown", async (req, res) => {
+    try {
+      const { project } = req.query;
+      const cards = await storage.getAllCards(project as string);
+      
+      // Group cards by status
+      const grouped = cards.reduce((acc, card) => {
+        if (!acc[card.status]) {
+          acc[card.status] = [];
+        }
+        acc[card.status].push(card);
+        return acc;
+      }, {} as Record<string, typeof cards>);
+      
+      // Sort cards within each status by order
+      Object.keys(grouped).forEach(status => {
+        grouped[status].sort((a, b) => parseInt(a.order) - parseInt(b.order));
+      });
+      
+      // Generate markdown
+      let markdown = "# Cards Summary\n\n";
+      
+      if (project) {
+        markdown += `**Project:** ${project}\n\n`;
+      }
+      
+      const statusLabels = {
+        'not-started': 'Not Started',
+        'blocked': 'Blocked',
+        'in-progress': 'In Progress',
+        'complete': 'Complete',
+        'verified': 'Verified'
+      };
+      
+      for (const [status, statusCards] of Object.entries(grouped)) {
+        if (statusCards.length > 0) {
+          markdown += `## ${statusLabels[status as keyof typeof statusLabels] || status} (${statusCards.length})\n\n`;
+          statusCards.forEach(card => {
+            markdown += `- ${card.title}\n`;
+          });
+          markdown += '\n';
+        }
+      }
+      
+      res.setHeader('Content-Type', 'text/markdown');
+      res.send(markdown);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to generate markdown summary" });
+    }
+  });
+
   // Get cards grouped by status (must come before the :id route)
   app.get("/api/cards/by-status", async (req, res) => {
     try {

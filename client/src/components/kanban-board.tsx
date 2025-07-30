@@ -3,15 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { motion, LayoutGroup } from "framer-motion";
-import { useLocation, useParams } from "wouter";
+
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { AddCardDialog } from "./add-card-dialog";
-import { CreateProjectDialog } from "./create-project-dialog";
+
 import { EditCardDialog } from "./edit-card-dialog";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Filter, Folder, FolderPlus, RotateCcw } from "lucide-react";
+
+import { Plus, Filter, RotateCcw } from "lucide-react";
 
 import { Card, KANBAN_STATUSES, KanbanStatus } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -59,50 +59,22 @@ const saveColumnWidths = (widths: Record<KanbanStatus, number>) => {
   }
 };
 
-export function KanbanBoard() {
+interface KanbanBoardProps {
+  selectedProject?: string;
+}
+
+export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showCreateProjectDialog, setShowCreateProjectDialog] = useState(false);
+
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [columnWidths, setColumnWidths] = useState<Record<KanbanStatus, number>>(loadColumnWidths);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isConnected } = useWebSocket();
-  const [location, setLocation] = useLocation();
-  const params = useParams();
   
-  // Get current project from URL parameter or default to first available
-  const { data: projects = [] } = useQuery<string[]>({
-    queryKey: ["/api/projects"],
-  });
-  
-  const urlProject = params.project;
-  const [selectedProject, setSelectedProject] = useState<string>(
-    urlProject || "ecommerce-platform"
-  );
-  
-  // Update selected project when URL changes or projects load
-  useEffect(() => {
-    if (urlProject && projects.includes(urlProject)) {
-      setSelectedProject(urlProject);
-    } else if (!urlProject && projects.length > 0) {
-      // If no project in URL, redirect to the first project
-      setLocation(`/project/${projects[0]}`);
-    }
-  }, [urlProject, projects, setLocation]);
-  
-  // Handle project selection and URL update
-  const handleProjectChange = (project: string) => {
-    setSelectedProject(project);
-    setLocation(`/project/${project}`);
-  };
-
-  // Handle new project creation
-  const handleProjectCreated = (projectName: string) => {
-    setSelectedProject(projectName);
-    setLocation(`/project/${projectName}`);
-  };
+  // Use the selectedProject passed as prop
   
   // Handle column width changes
   const handleColumnWidthChange = (status: KanbanStatus, newWidth: number) => {
@@ -141,7 +113,10 @@ export function KanbanBoard() {
   const { data: cards = [], isLoading } = useQuery<Card[]>({
     queryKey: ["/api/cards", selectedProject],
     queryFn: async () => {
-      const response = await fetch(`/api/cards?project=${selectedProject}`);
+      const url = selectedProject 
+        ? `/api/cards?project=${encodeURIComponent(selectedProject)}`
+        : '/api/cards';
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch cards');
       return response.json();
     },
@@ -310,30 +285,7 @@ export function KanbanBoard() {
             </span>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Folder className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            <Select value={selectedProject} onValueChange={handleProjectChange}>
-              <SelectTrigger className="w-48 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100">
-                <SelectValue placeholder="Select project" />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                {projects.map(project => (
-                  <SelectItem key={project} value={project} className="text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    {project.charAt(0).toUpperCase() + project.slice(1).replace('-', ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowCreateProjectDialog(true)}
-              className="text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              title="Create new project"
-            >
-              <FolderPlus className="w-4 h-4" />
-            </Button>
-          </div>
+
         </div>
         
         <div className="flex items-center space-x-3">
@@ -408,13 +360,7 @@ export function KanbanBoard() {
       <AddCardDialog
         open={showAddDialog}
         onOpenChange={setShowAddDialog}
-        project={selectedProject}
-      />
-      
-      <CreateProjectDialog
-        open={showCreateProjectDialog}
-        onOpenChange={setShowCreateProjectDialog}
-        onProjectCreated={handleProjectCreated}
+        project={selectedProject || ""}
       />
 
       {editingCard && (

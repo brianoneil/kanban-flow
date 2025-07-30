@@ -101,6 +101,9 @@ The architecture supports both development (with in-memory storage) and producti
 ## Recent Changes
 
 ### July 30, 2025
+- **Cards Summary View**: Added floating summary component with card titles and status counts, real-time updates, and markdown export
+- **Summary API Endpoints**: GET /api/cards/summary (JSON) and /api/cards/summary/markdown for external access
+- **Real-time Summary Updates**: Summary automatically refreshes via WebSocket when cards change
 - **Bulk Delete API & MCP Tool**: Added efficient bulk card deletion via DELETE /api/cards/bulk endpoint and bulk_delete_cards MCP tool
 - **Enhanced MCP Capabilities**: MCP now supports deleting multiple cards by ID array for better automation efficiency
 - **Real-time Bulk Updates**: Bulk deletions broadcast CARDS_BULK_DELETED events to update all connected clients

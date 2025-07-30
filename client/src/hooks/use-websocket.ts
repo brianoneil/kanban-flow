@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card } from '@shared/schema';
 
-export function useWebSocket() {
+export function useWebSocket(options?: { onMessage?: (message: any) => void }) {
   const queryClient = useQueryClient();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -27,6 +27,11 @@ export function useWebSocket() {
         try {
           const message = JSON.parse(event.data);
           console.log('WebSocket message received:', message.type, message.data);
+          
+          // Call custom onMessage handler if provided
+          if (options?.onMessage) {
+            options.onMessage(message);
+          }
           
           switch (message.type) {
             case 'INITIAL_DATA':
@@ -77,6 +82,16 @@ export function useWebSocket() {
               // Remove card from cache and invalidate queries
               queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {
                 return oldData.filter(card => card.id !== message.data.id);
+              });
+              queryClient.invalidateQueries({ queryKey: ['/api/cards'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+              break;
+              
+            case 'CARDS_BULK_DELETED':
+              // Remove multiple cards from cache and invalidate queries
+              queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {
+                const deletedIds = message.data;
+                return oldData.filter(card => !deletedIds.includes(card.id));
               });
               queryClient.invalidateQueries({ queryKey: ['/api/cards'] });
               queryClient.invalidateQueries({ queryKey: ['/api/projects'] });

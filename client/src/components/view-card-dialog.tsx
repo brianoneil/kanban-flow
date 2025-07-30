@@ -160,19 +160,44 @@ export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCar
         </DialogHeader>
         
         <div className="overflow-y-auto flex-1 max-h-[60vh] px-1">
-          <div className="prose prose-gray dark:prose-invert prose-lg max-w-none">
-            {card.description ? (
-              <div className="prose-headings:text-gray-900 dark:prose-headings:text-gray-100 prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-code:text-blue-600 dark:prose-code:text-blue-400 prose-blockquote:border-l-blue-500">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {card.description}
-                </ReactMarkdown>
-              </div>
-            ) : (
-              <div className="text-gray-500 dark:text-gray-400 italic text-center py-8">
-                No description provided
-              </div>
-            )}
-          </div>
+          {card.description ? (
+            <div className="text-sm text-gray-600 break-words prose prose-sm max-w-none">
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  // Use the same clean styling as InteractiveMarkdown
+                  p: ({ children }) => <p className="mb-2 last:mb-0 text-gray-700 dark:text-gray-300">{children}</p>,
+                  ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-2">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
+                  li: ({ children }) => <li className="mb-1 ml-4 text-sm text-gray-700 dark:text-gray-300">{children}</li>,
+                  code: ({ children }) => <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm text-gray-800 dark:text-gray-200">{children}</code>,
+                  strong: ({ children }) => <strong className="font-semibold text-gray-800 dark:text-gray-200">{children}</strong>,
+                  em: ({ children }) => <em className="italic text-gray-700 dark:text-gray-300">{children}</em>,
+                  h1: ({ children }) => <h1 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-base font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">{children}</h3>,
+                  blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 py-1 my-2 italic bg-gray-50 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300">{children}</blockquote>,
+                  a: ({ href, children }) => (
+                    <a 
+                      href={href} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
+                    >
+                      {children}
+                    </a>
+                  ),
+                  pre: ({ children }) => <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto my-2 text-sm">{children}</pre>,
+                }}
+              >
+                {card.description}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <div className="text-gray-500 dark:text-gray-400 italic text-center py-8">
+              No description provided
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

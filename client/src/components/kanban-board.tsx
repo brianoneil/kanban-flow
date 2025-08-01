@@ -255,25 +255,27 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-        {KANBAN_STATUSES.map(status => (
-          <div key={status} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="animate-pulse">
-              <div className="h-6 bg-gray-300 rounded mb-4"></div>
-              <div className="space-y-3">
-                <div className="h-20 bg-gray-200 rounded"></div>
-                <div className="h-20 bg-gray-200 rounded"></div>
+      <div className="w-full overflow-x-auto">
+        <div className="flex gap-6 min-h-screen pb-4 px-6">
+          {KANBAN_STATUSES.map(status => (
+            <div key={status} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4" style={{ width: DEFAULT_COLUMN_WIDTHS[status], minWidth: DEFAULT_COLUMN_WIDTHS[status] }}>
+              <div className="animate-pulse">
+                <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded mb-4"></div>
+                <div className="space-y-3">
+                  <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                  <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 max-w-7xl mx-auto px-6">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className={cn(
@@ -310,7 +312,7 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="w-full overflow-x-auto">
         <LayoutGroup>
           <DndContext
             sensors={sensors}
@@ -318,7 +320,7 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
             onDragEnd={handleDragEnd}
             collisionDetection={closestCenter}
           >
-            <div className="flex gap-6 min-h-screen pb-4">
+            <div className="flex gap-6 min-h-screen pb-4 px-6">
             {KANBAN_STATUSES.map(status => {
               const config = getColumnConfig(status);
               const columnCards = getCardsByStatus(status);

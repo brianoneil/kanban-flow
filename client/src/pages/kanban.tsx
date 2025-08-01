@@ -77,7 +77,7 @@ export default function Kanban() {
           <ThemeToggle />
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="w-full py-8">
         <KanbanBoard selectedProject={selectedProject === "all" ? undefined : selectedProject} />
         <CardsSummary selectedProject={selectedProject === "all" ? undefined : selectedProject} />
       </main>

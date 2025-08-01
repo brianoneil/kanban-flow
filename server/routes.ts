@@ -176,6 +176,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(card);
     } catch (error) {
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "Invalid card data", 
+          errors: JSON.parse(error.message) 
+        });
+      }
       if (error instanceof Error && error.message.includes("validation")) {
         return res.status(400).json({ message: "Invalid card data" });
       }
@@ -195,6 +201,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(card);
     } catch (error) {
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({ 
+          message: "Invalid card data", 
+          errors: JSON.parse(error.message) 
+        });
+      }
       if (error instanceof Error && error.message.includes("not found")) {
         return res.status(404).json({ message: "Card not found" });
       }
@@ -694,20 +706,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status?: string;
           };
           
-          const cardData = { title, description, project, link, status };
-          const card = await storage.createCard(cardData);
-          
-          // Broadcast card creation
-          broadcast({ type: "CARD_CREATED", data: card });
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Card created successfully:\n${JSON.stringify(card, null, 2)}`
-              } as TextContent
-            ]
-          };
+          try {
+            // Validate the card data using the schema
+            const validatedData = insertCardSchema.parse({
+              title,
+              description,
+              project,
+              link: link || undefined,
+              status
+            });
+            
+            const card = await storage.createCard(validatedData);
+            
+            // Broadcast card creation
+            broadcast({ type: "CARD_CREATED", data: card });
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Card created successfully:\n${JSON.stringify(card, null, 2)}`
+                } as TextContent
+              ]
+            };
+          } catch (error) {
+            if (error instanceof Error && error.name === "ZodError") {
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Invalid card data. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`
+                  } as TextContent
+                ]
+              };
+            }
+            throw error;
+          }
         }
         
         case "move_card": {
@@ -717,24 +751,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
             position?: number;
           };
           
-          const updateData: any = { status };
-          if (position !== undefined) {
-            updateData.order = position.toString();
+          try {
+            // Validate the update data using the schema
+            const updateData: any = { status };
+            if (position !== undefined) {
+              updateData.order = position.toString();
+            }
+            
+            const validatedData = updateCardSchema.parse(updateData);
+            const card = await storage.updateCard(id, validatedData);
+            
+            // Broadcast card update
+            broadcast({ type: "CARD_UPDATED", data: card });
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Card moved successfully:\n${JSON.stringify(card, null, 2)}`
+                } as TextContent
+              ]
+            };
+          } catch (error) {
+            if (error instanceof Error && error.name === "ZodError") {
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Invalid status. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`
+                  } as TextContent
+                ]
+              };
+            }
+            throw error;
           }
-          
-          const card = await storage.updateCard(id, updateData);
-          
-          // Broadcast card update
-          broadcast({ type: "CARD_UPDATED", data: card });
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Card moved successfully:\n${JSON.stringify(card, null, 2)}`
-              } as TextContent
-            ]
-          };
         }
         
         case "update_card": {
@@ -746,19 +796,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status?: string;
           };
           
-          const card = await storage.updateCard(id, updates);
-          
-          // Broadcast card update
-          broadcast({ type: "CARD_UPDATED", data: card });
-          
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Card updated successfully:\n${JSON.stringify(card, null, 2)}`
-              } as TextContent
-            ]
-          };
+          try {
+            // Validate the update data using the schema
+            const validatedData = updateCardSchema.parse(updates);
+            const card = await storage.updateCard(id, validatedData);
+            
+            // Broadcast card update
+            broadcast({ type: "CARD_UPDATED", data: card });
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: `Card updated successfully:\n${JSON.stringify(card, null, 2)}`
+                } as TextContent
+              ]
+            };
+          } catch (error) {
+            if (error instanceof Error && error.name === "ZodError") {
+              const statusError = updates.status ? ` Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${updates.status}` : '';
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: `Invalid card data.${statusError}`
+                  } as TextContent
+                ]
+              };
+            }
+            throw error;
+          }
         }
         
         case "delete_card": {

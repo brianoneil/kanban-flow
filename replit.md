@@ -103,9 +103,12 @@ The architecture supports both development (with in-memory storage) and producti
 ### July 30, 2025
 - **Cards Summary View**: Added floating summary component with card titles and status counts, real-time updates, and markdown export
 - **Summary API Endpoints**: GET /api/cards/summary (JSON) and /api/cards/summary/markdown for external access
-- **Real-time Summary Updates**: Summary automatically refreshes via WebSocket when cards change
+- **Real-time Summary Updates**: Summary automatically refreshes via WebSocket when cards change  
 - **Draggable Summary Card**: Made summary component draggable with move handle and improved text contrast for better readability
 - **Data Consistency Fix**: Fixed status mismatch where cards had "completed" status but frontend expected "complete"
+- **Status Validation**: Enforced valid kanban statuses (not-started, blocked, in-progress, complete, verified) in API and MCP tools
+- **Enhanced Error Messages**: Added clear validation errors when MCP agents use invalid statuses
+- **Schema Validation**: Updated Zod schemas to strictly validate status enum values
 - **Bulk Delete API & MCP Tool**: Added efficient bulk card deletion via DELETE /api/cards/bulk endpoint and bulk_delete_cards MCP tool
 - **Enhanced MCP Capabilities**: MCP now supports deleting multiple cards by ID array for better automation efficiency
 - **Real-time Bulk Updates**: Bulk deletions broadcast CARDS_BULK_DELETED events to update all connected clients

@@ -123,6 +123,9 @@ The architecture supports both development (with in-memory storage) and producti
 - **Column Width Reset**: Added reset button (rotate icon) in header to restore all columns to default 320px width
 - **Enhanced UX**: Column width changes are automatically saved and restored across browser sessions
 - **Improved Controls**: New visual indicator for column width reset functionality with toast notifications
+- **Full-Width Layout**: Updated page layout so scrollable columns area fills full page width while keeping header controls centered
+- **Collapsible Summary**: Made summary component collapsed by default with localStorage persistence for visibility and position
+- **Position Memory**: Summary component remembers its dragged position across browser sessions
 
 ### July 29, 2025
 - **Enhanced Card Design**: Added expandable/collapsible card views with smooth animations

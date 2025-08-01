@@ -37,9 +37,31 @@ const statusLabels = {
   'verified': 'Verified'
 };
 
+// Load saved state from localStorage
+const loadSummaryState = () => {
+  try {
+    const savedState = localStorage.getItem('cards-summary-state');
+    if (savedState) {
+      return JSON.parse(savedState);
+    }
+  } catch (error) {
+    console.warn('Failed to load summary state:', error);
+  }
+  return { isVisible: false, position: { x: 0, y: 0 } }; // Collapsed by default
+};
+
+// Save state to localStorage
+const saveSummaryState = (state: { isVisible: boolean; position: { x: number; y: number } }) => {
+  try {
+    localStorage.setItem('cards-summary-state', JSON.stringify(state));
+  } catch (error) {
+    console.warn('Failed to save summary state:', error);
+  }
+};
+
 export function CardsSummary({ selectedProject, className }: CardsSummaryProps) {
-  const [isVisible, setIsVisible] = useState(true);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [summaryState, setSummaryState] = useState(loadSummaryState);
+  const { isVisible, position } = summaryState;
   
   const { data: summary = [], isLoading, refetch } = useQuery({
     queryKey: ['/api/cards/summary', selectedProject],
@@ -92,17 +114,24 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
 
   const totalCards = summary.length;
 
+  // Update state and save to localStorage
+  const updateSummaryState = (newState: Partial<{ isVisible: boolean; position: { x: number; y: number } }>) => {
+    const updatedState = { ...summaryState, ...newState };
+    setSummaryState(updatedState);
+    saveSummaryState(updatedState);
+  };
+
   if (!isVisible) {
     return (
       <Draggable
         position={position}
-        onStop={(e, data) => setPosition({ x: data.x, y: data.y })}
+        onStop={(e, data) => updateSummaryState({ position: { x: data.x, y: data.y } })}
       >
         <div className={`fixed top-4 right-4 z-50 ${className}`} style={{ position: 'fixed', transform: `translate(${position.x}px, ${position.y}px)` }}>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setIsVisible(true)}
+            onClick={() => updateSummaryState({ isVisible: true })}
             className="shadow-lg"
           >
             <Eye className="h-4 w-4 mr-2" />
@@ -116,7 +145,7 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
   return (
     <Draggable
       position={position}
-      onStop={(e, data) => setPosition({ x: data.x, y: data.y })}
+      onStop={(e, data) => updateSummaryState({ position: { x: data.x, y: data.y } })}
       handle=".drag-handle"
     >
       <div className={`fixed top-4 right-4 z-50 w-80 ${className}`} style={{ position: 'fixed', transform: `translate(${position.x}px, ${position.y}px)` }}>
@@ -155,7 +184,7 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setIsVisible(false)}
+                  onClick={() => updateSummaryState({ isVisible: false })}
                   className="h-8 w-8 p-0"
                 >
                   <EyeOff className="h-4 w-4" />

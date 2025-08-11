@@ -139,8 +139,19 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
             </AnimatePresence>
           </motion.div>
           
-          {/* Drop zone for empty columns or end of column */}
-          <div className="h-16 w-full" />
+          {/* Drop zone for empty columns - make it more prominent when empty */}
+          {cards.length === 0 ? (
+            <div className={cn(
+              "h-40 w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center transition-all duration-200",
+              isOver && "border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 border-solid"
+            )}>
+              <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+                Drop cards here
+              </p>
+            </div>
+          ) : (
+            <div className="h-16 w-full" />
+          )}
         </div>
       </div>
       

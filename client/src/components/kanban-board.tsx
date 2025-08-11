@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, rectIntersection, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, rectIntersection, PointerSensor, useSensor, useSensors, pointerWithin } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { motion, LayoutGroup } from "framer-motion";
 
@@ -318,7 +318,7 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
             sensors={sensors}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            collisionDetection={rectIntersection}
+            collisionDetection={pointerWithin}
           >
             <div className="flex gap-6 min-h-screen pb-4 px-6">
               {KANBAN_STATUSES.map(status => {

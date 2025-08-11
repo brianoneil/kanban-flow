@@ -90,16 +90,14 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
 
   return (
     <div 
-      className="kanban-column rounded-xl overflow-hidden flex-shrink-0 relative group"
+      ref={setNodeRef}
+      className={cn(
+        "kanban-column rounded-xl overflow-hidden flex-shrink-0 relative group min-h-full transition-all duration-300 ease-in-out",
+        isOver && "ring-2 ring-blue-400 ring-opacity-60 shadow-xl scale-[1.02]"
+      )}
       style={{ width: `${width}px` }}
     >
-      <div 
-        ref={setNodeRef}
-        className={cn(
-          "min-h-full transition-all duration-300 ease-in-out",
-          isOver && "ring-2 ring-blue-400 ring-opacity-60 shadow-xl scale-[1.02]"
-        )}
-      >
+      <div className="min-h-full">
         <div className={cn("px-5 py-4 border-b border-white/20 dark:border-gray-600/20", getHeaderGradient())}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">

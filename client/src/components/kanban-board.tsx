@@ -321,27 +321,25 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
             collisionDetection={rectIntersection}
           >
             <div className="flex gap-6 min-h-screen pb-4 px-6">
-              <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
-                {KANBAN_STATUSES.map(status => {
-                  const config = getColumnConfig(status);
-                  const columnCards = getCardsByStatus(status);
-                  
-                  return (
-                    <KanbanColumn
-                      key={status}
-                      id={status}
-                      title={config.title}
-                      color={config.color}
-                      bgColor={config.bgColor}
-                      cards={columnCards}
-                      count={columnCards.length}
-                      width={columnWidths[status]}
-                      onWidthChange={(newWidth) => handleColumnWidthChange(status, newWidth)}
-                      onEditCard={handleEditCard}
-                    />
-                  );
-                })}
-              </SortableContext>
+              {KANBAN_STATUSES.map(status => {
+                const config = getColumnConfig(status);
+                const columnCards = getCardsByStatus(status);
+                
+                return (
+                  <KanbanColumn
+                    key={status}
+                    id={status}
+                    title={config.title}
+                    color={config.color}
+                    bgColor={config.bgColor}
+                    cards={columnCards}
+                    count={columnCards.length}
+                    width={columnWidths[status]}
+                    onWidthChange={(newWidth) => handleColumnWidthChange(status, newWidth)}
+                    onEditCard={handleEditCard}
+                  />
+                );
+              })}
             </div>
         
         <DragOverlay dropAnimation={null}>

@@ -118,26 +118,28 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
             isOver && "bg-gradient-to-b from-blue-50/50 to-blue-100/30 dark:from-blue-900/30 dark:to-blue-800/20"
           )}
         >
-          <motion.div className="space-y-3" layout>
-            <AnimatePresence mode="popLayout">
-              {cards.map(card => (
-                <motion.div
-                  key={card.id}
-                  layoutId={`card-${card.id}`}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ 
-                    layout: { duration: 0.5, ease: "easeInOut" },
-                    opacity: { duration: 0.3 },
-                    scale: { duration: 0.3 }
-                  }}
-                >
-                  <TaskCard card={card} onEdit={onEditCard} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
+            <motion.div className="space-y-3" layout>
+              <AnimatePresence mode="popLayout">
+                {cards.map(card => (
+                  <motion.div
+                    key={card.id}
+                    layoutId={`card-${card.id}`}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ 
+                      layout: { duration: 0.5, ease: "easeInOut" },
+                      opacity: { duration: 0.3 },
+                      scale: { duration: 0.3 }
+                    }}
+                  >
+                    <TaskCard card={card} onEdit={onEditCard} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          </SortableContext>
           
           {/* Drop zone for empty columns - make it more prominent when empty */}
           {cards.length === 0 ? (

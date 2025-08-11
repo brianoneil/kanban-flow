@@ -183,9 +183,9 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
         ref={setNodeRef}
         style={style}
         {...attributes}
-        {...listeners}
+
         className={cn(
-          "task-card rounded-xl p-5 cursor-move group relative flex flex-col min-w-[280px] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm transition-colors duration-300",
+          "task-card rounded-xl p-5 group relative flex flex-col min-w-[280px] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm transition-colors duration-300",
           getBorderColor(),
           isDragging && "opacity-60 scale-105 rotate-2 shadow-2xl z-50",
           card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75 animate-pulse",
@@ -238,8 +238,8 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
             </button>
             
             {/* Drag handle */}
-            <div className="p-1">
-              <GripVertical className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <div className="p-1 cursor-grab active:cursor-grabbing" {...listeners}>
+              <GripVertical className="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" />
             </div>
           </div>
         </div>

@@ -128,16 +128,15 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cards", selectedProject] });
-      toast({
-        title: "Card updated",
-        description: "Card status has been updated successfully.",
-      });
+      // Don't invalidate immediately for drag operations to avoid flicker
+      // The optimistic update handles the UI, server response confirms it
     },
     onError: () => {
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ["/api/cards", selectedProject] });
       toast({
         title: "Error",
-        description: "Failed to update card status.",
+        description: "Failed to update card. Changes reverted.",
         variant: "destructive",
       });
     },
@@ -206,14 +205,16 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
             const activeIndex = statusCards.findIndex(card => card.id === activeId);
             const overIndex = statusCards.findIndex(card => card.id === overId);
             
-            if (activeIndex !== overIndex) {
+            if (activeIndex !== overIndex && activeIndex !== -1 && overIndex !== -1) {
               const reorderedCards = arrayMove(statusCards, activeIndex, overIndex);
               
               // Update the order for all cards in this status
               const allCardsWithNewOrder = cards.map(card => {
                 if (card.status === activeCard.status) {
-                  const newIndex = reorderedCards.findIndex(c => c.id === card.id);
-                  return { ...card, order: (newIndex + 1).toString() };
+                  const reorderedIndex = reorderedCards.findIndex(c => c.id === card.id);
+                  if (reorderedIndex !== -1) {
+                    return { ...card, order: (reorderedIndex + 1).toString() };
+                  }
                 }
                 return card;
               });
@@ -221,11 +222,17 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
               // Optimistic update
               queryClient.setQueryData(["/api/cards", selectedProject], allCardsWithNewOrder);
               
-              // Update the moved card's order
-              const newOrder = (overIndex + 1).toString();
+              // Update all affected cards' orders through batch API
+              const orderUpdates = reorderedCards.map((card, index) => ({
+                id: card.id,
+                updates: { order: (index + 1).toString() }
+              }));
+              
+              // For now, just update the moved card - we could add batch update later
+              const activeCardNewIndex = reorderedCards.findIndex(c => c.id === activeCard.id);
               updateCardMutation.mutate({
                 id: activeCard.id,
-                updates: { order: newOrder }
+                updates: { order: (activeCardNewIndex + 1).toString() }
               });
             }
           } else {

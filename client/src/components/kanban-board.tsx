@@ -178,7 +178,7 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
     
     // Immediately apply optimistic updates for smoother UX
     const optimisticUpdate = () => {
-      // If we're dropping on a column
+      // If we're dropping on a column (status ID)
       if (KANBAN_STATUSES.includes(overId as KanbanStatus)) {
         const newStatus = overId as KanbanStatus;
         if (activeCard.status !== newStatus) {
@@ -196,12 +196,12 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
           });
         }
       } else {
-        // We're dropping on a card
+        // We're dropping on a card - check if it's the same status or different
         const overCard = cards.find(card => card.id === overId);
         
         if (overCard) {
-          // Same column reordering
           if (activeCard.status === overCard.status) {
+            // Same column reordering
             const statusCards = getCardsByStatus(activeCard.status as KanbanStatus);
             const activeIndex = statusCards.findIndex(card => card.id === activeId);
             const overIndex = statusCards.findIndex(card => card.id === overId);
@@ -321,26 +321,28 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
             collisionDetection={closestCenter}
           >
             <div className="flex gap-6 min-h-screen pb-4 px-6">
-            {KANBAN_STATUSES.map(status => {
-              const config = getColumnConfig(status);
-              const columnCards = getCardsByStatus(status);
-              
-              return (
-                <KanbanColumn
-                  key={status}
-                  id={status}
-                  title={config.title}
-                  color={config.color}
-                  bgColor={config.bgColor}
-                  cards={columnCards}
-                  count={columnCards.length}
-                  width={columnWidths[status]}
-                  onWidthChange={(newWidth) => handleColumnWidthChange(status, newWidth)}
-                  onEditCard={handleEditCard}
-                />
-              );
-            })}
-          </div>
+              <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
+                {KANBAN_STATUSES.map(status => {
+                  const config = getColumnConfig(status);
+                  const columnCards = getCardsByStatus(status);
+                  
+                  return (
+                    <KanbanColumn
+                      key={status}
+                      id={status}
+                      title={config.title}
+                      color={config.color}
+                      bgColor={config.bgColor}
+                      cards={columnCards}
+                      count={columnCards.length}
+                      width={columnWidths[status]}
+                      onWidthChange={(newWidth) => handleColumnWidthChange(status, newWidth)}
+                      onEditCard={handleEditCard}
+                    />
+                  );
+                })}
+              </SortableContext>
+            </div>
         
         <DragOverlay dropAnimation={null}>
           {activeCard ? (

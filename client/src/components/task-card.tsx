@@ -193,7 +193,17 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
         )}
       >
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-medium text-gray-900 dark:text-gray-100 flex-1 pr-2 break-words">{card.title}</h4>
+          <div className="flex-1 pr-2">
+            <h4 className="font-medium text-gray-900 dark:text-gray-100 break-words mb-1">{card.title}</h4>
+            {/* Project tag */}
+            {card.project && (
+              <div className="flex items-center">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  {card.project}
+                </span>
+              </div>
+            )}
+          </div>
           
           {/* Action buttons container */}
           <div className="flex items-center space-x-1 ml-2 flex-shrink-0">

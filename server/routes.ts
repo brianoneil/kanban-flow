@@ -394,6 +394,177 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== MCP (Model Context Protocol) Endpoints =====
 
+  // SSE endpoint for MCP streaming support
+  app.get('/mcp/stream', (req, res) => {
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    // Send initial connection event
+    res.write(`event: connection\n`);
+    res.write(`data: ${JSON.stringify({ 
+      type: 'connection', 
+      status: 'connected',
+      server: 'kanban-mcp-sse',
+      version: '1.0.0',
+      timestamp: new Date().toISOString()
+    })}\n\n`);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      console.log('[MCP SSE] Client disconnected');
+      res.end();
+    });
+
+    // Keep connection alive with periodic heartbeat
+    const heartbeat = setInterval(() => {
+      res.write(`event: heartbeat\n`);
+      res.write(`data: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+    }, 30000); // 30 seconds
+
+    // Clean up on connection close
+    res.on('close', () => {
+      clearInterval(heartbeat);
+    });
+
+    console.log('[MCP SSE] Client connected');
+  });
+
+  // SSE endpoint for MCP method calls
+  app.post('/mcp/stream', async (req, res) => {
+    try {
+      // Set SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+
+      const { jsonrpc, id, method, params } = req.body;
+      
+      console.log(`[MCP SSE] Request: ${method}`, params ? JSON.stringify(params) : 'no params');
+
+      // Send start event
+      res.write(`event: start\n`);
+      res.write(`data: ${JSON.stringify({ 
+        id, 
+        method,
+        timestamp: new Date().toISOString()
+      })}\n\n`);
+
+      if (jsonrpc !== "2.0") {
+        res.write(`event: error\n`);
+        res.write(`data: ${JSON.stringify({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32600, message: "Invalid Request" }
+        })}\n\n`);
+        res.end();
+        return;
+      }
+
+      let result;
+      switch (method) {
+        case "initialize":
+          const clientProtocolVersion = params?.protocolVersion || "2024-11-05";
+          result = {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              protocolVersion: clientProtocolVersion,
+              capabilities: {
+                tools: { listChanged: true },
+                logging: {}
+              },
+              serverInfo: {
+                name: "kanban-integrated-server-sse",
+                version: "1.0.0"
+              }
+            }
+          };
+          break;
+
+        case "tools/list":
+          result = {
+            jsonrpc: "2.0",
+            id,
+            result: { tools: mcpTools }
+          };
+          break;
+
+        case "tools/call":
+          const { name, arguments: args } = params;
+          
+          // Send progress event
+          res.write(`event: progress\n`);
+          res.write(`data: ${JSON.stringify({ 
+            id, 
+            tool: name,
+            status: 'executing'
+          })}\n\n`);
+
+          const toolResult = await executeMcpTool(name, args || {});
+          result = {
+            jsonrpc: "2.0",
+            id,
+            result: toolResult
+          };
+          break;
+
+        case "ping":
+          result = {
+            jsonrpc: "2.0",
+            id,
+            result: {}
+          };
+          break;
+
+        default:
+          res.write(`event: error\n`);
+          res.write(`data: ${JSON.stringify({
+            jsonrpc: "2.0",
+            id,
+            error: { code: -32601, message: `Method not found: ${method}` }
+          })}\n\n`);
+          res.end();
+          return;
+      }
+
+      // Send the result
+      res.write(`event: result\n`);
+      res.write(`data: ${JSON.stringify(result)}\n\n`);
+      
+      // Send completion event
+      res.write(`event: complete\n`);
+      res.write(`data: ${JSON.stringify({ 
+        id, 
+        timestamp: new Date().toISOString()
+      })}\n\n`);
+      
+      res.end();
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`[MCP SSE] Error:`, errorMessage);
+      
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({
+        jsonrpc: "2.0",
+        id: req.body?.id || null,
+        error: { code: -32603, message: `Internal error: ${errorMessage}` }
+      })}\n\n`);
+      
+      res.end();
+    }
+  });
+
   // MCP Tools definition
   const mcpTools: Tool[] = [
     {
@@ -980,7 +1151,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endpoints: {
         health: '/mcp/health',
         info: '/mcp/info',
-        mcp: '/mcp'
+        mcp: '/mcp',
+        stream: '/mcp/stream',
+        streamPost: '/mcp/stream (POST)'
       }
     });
   });
@@ -1018,7 +1191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       endpoints: {
         health: "/mcp/health",
         info: "/mcp/info",
-        mcp: "/mcp (POST only)"
+        mcp: "/mcp (POST only)",
+        stream: "/mcp/stream (GET for connection, POST for method calls)",
+        streamExample: {
+          connect: "GET /mcp/stream - establishes SSE connection",
+          call: "POST /mcp/stream - send MCP method calls via SSE"
+        }
       }
     });
   });

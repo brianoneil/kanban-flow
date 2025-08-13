@@ -100,6 +100,15 @@ The architecture supports both development (with in-memory storage) and producti
 
 ## Recent Changes
 
+### August 13, 2025
+- **Project Tags on Cards**: Added small blue project badges below card titles for easy project identification
+- **MCP SSE Support**: Added Server-Sent Events (SSE) endpoints for MCP to improve client compatibility
+- **Enhanced MCP Endpoints**: New GET /mcp/stream for connection establishment and POST /mcp/stream for method calls
+- **Real-time MCP Events**: SSE provides streaming responses with progress, start, result, and completion events
+- **Better Client Support**: SSE addresses compatibility issues with MCP clients that don't support traditional HTTP
+- **Comprehensive Testing**: Added test-mcp-sse.ts script to verify SSE functionality
+- **Improved Documentation**: Updated endpoint information to include SSE streaming options
+
 ### July 30, 2025
 - **Cards Summary View**: Added floating summary component with card titles and status counts, real-time updates, and markdown export
 - **Summary API Endpoints**: GET /api/cards/summary (JSON) and /api/cards/summary/markdown for external access

@@ -102,12 +102,13 @@ The architecture supports both development (with in-memory storage) and producti
 
 ### August 13, 2025
 - **Project Tags on Cards**: Added small blue project badges below card titles for easy project identification
-- **MCP SSE Support**: Added Server-Sent Events (SSE) endpoints for MCP to improve client compatibility
-- **Enhanced MCP Endpoints**: New GET /mcp/stream for connection establishment and POST /mcp/stream for method calls
-- **Real-time MCP Events**: SSE provides streaming responses with progress, start, result, and completion events
-- **Better Client Support**: SSE addresses compatibility issues with MCP clients that don't support traditional HTTP
-- **Comprehensive Testing**: Added test-mcp-sse.ts script to verify SSE functionality
-- **Improved Documentation**: Updated endpoint information to include SSE streaming options
+- **MCP Streamable HTTP**: Implemented proper MCP Streamable HTTP transport following 2025-06-18 specification
+- **SSE Support**: GET /mcp with Accept: text/event-stream header opens SSE stream for server-initiated messages
+- **Flexible Response Format**: POST /mcp supports both SSE and JSON responses based on client Accept header
+- **Session Management**: Added Mcp-Session-Id header support for stateful sessions during initialization
+- **Specification Compliance**: Fixed SSE implementation to match official MCP transport specification
+- **Enhanced Testing**: Updated test-mcp-sse.ts to verify proper MCP Streamable HTTP functionality
+- **Better Client Compatibility**: Now works correctly with MCP clients like Cline that require proper SSE transport
 
 ### July 30, 2025
 - **Cards Summary View**: Added floating summary component with card titles and status counts, real-time updates, and markdown export

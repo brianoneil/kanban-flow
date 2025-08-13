@@ -10,49 +10,25 @@
 const SERVER_URL = process.env.KANBAN_SERVER_URL || "http://localhost:5000";
 
 async function testSSEConnection() {
-  console.log('\n=== Testing MCP SSE Connection (GET /mcp/stream) ===');
+  console.log('\n=== Testing MCP SSE Connection (GET /mcp with Accept: text/event-stream) ===');
   
   try {
-    const response = await fetch(`${SERVER_URL}/mcp/stream`);
+    const response = await fetch(`${SERVER_URL}/mcp`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/event-stream'
+      }
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    if (!response.body) {
-      throw new Error('No response body');
-    }
+    console.log('✅ SSE connection established');
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    
-    console.log('Connected to SSE stream...');
-    let eventCount = 0;
-    const maxEvents = 3; // Limit for testing
-    
-    while (eventCount < maxEvents) {
-      const { done, value } = await reader.read();
-      
-      if (done) {
-        console.log('Stream ended');
-        break;
-      }
-      
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
-      
-      for (const line of lines) {
-        if (line.startsWith('event:')) {
-          console.log(`📡 ${line}`);
-        } else if (line.startsWith('data:')) {
-          console.log(`📄 ${line}`);
-          eventCount++;
-        }
-      }
-    }
-    
-    reader.releaseLock();
-    console.log('✅ SSE connection test completed');
+    // In a real scenario, we'd read the stream for server-initiated messages
+    // For this test, we just verify the connection can be established
     
   } catch (error) {
     console.error('❌ SSE connection test failed:', error);
@@ -60,7 +36,7 @@ async function testSSEConnection() {
 }
 
 async function testSSEMethodCall() {
-  console.log('\n=== Testing MCP SSE Method Call (POST /mcp/stream) ===');
+  console.log('\n=== Testing MCP SSE Method Call (POST /mcp with Accept: text/event-stream) ===');
   
   const testRequest = {
     jsonrpc: "2.0",
@@ -70,10 +46,11 @@ async function testSSEMethodCall() {
   };
   
   try {
-    const response = await fetch(`${SERVER_URL}/mcp/stream`, {
+    const response = await fetch(`${SERVER_URL}/mcp`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'text/event-stream'
       },
       body: JSON.stringify(testRequest)
     });
@@ -82,41 +59,50 @@ async function testSSEMethodCall() {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
     
-    if (!response.body) {
-      throw new Error('No response body');
-    }
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    
-    console.log('Reading SSE method call response...');
-    
-    while (true) {
-      const { done, value } = await reader.read();
+    if (response.headers.get('content-type')?.includes('text/event-stream')) {
+      console.log('Received SSE response');
       
-      if (done) {
-        console.log('Stream ended');
-        break;
+      if (!response.body) {
+        throw new Error('No response body');
       }
       
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
       
-      for (const line of lines) {
-        if (line.startsWith('event:')) {
-          console.log(`📡 ${line}`);
-        } else if (line.startsWith('data:')) {
-          try {
-            const data = JSON.parse(line.substring(5));
-            console.log(`📄 Data:`, JSON.stringify(data, null, 2));
-          } catch {
-            console.log(`📄 ${line}`);
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) {
+          console.log('Stream ended');
+          break;
+        }
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data:')) {
+            try {
+              const data = JSON.parse(line.substring(5));
+              console.log(`📄 SSE Data:`, JSON.stringify(data, null, 2));
+            } catch {
+              console.log(`📄 Raw data: ${line}`);
+            }
+          } else if (line.trim()) {
+            console.log(`📡 SSE Line: ${line}`);
           }
         }
       }
+      
+      reader.releaseLock();
+    } else {
+      // JSON response
+      const data = await response.json();
+      console.log('📄 JSON Response:', JSON.stringify(data, null, 2));
     }
     
-    reader.releaseLock();
     console.log('✅ SSE method call test completed');
     
   } catch (error) {
@@ -177,14 +163,13 @@ async function main() {
   await testSSEConnection();
   await testSSEMethodCall();
   
-  console.log('\n🎉 All MCP SSE tests completed!');
-  console.log('\nSSE endpoints available:');
-  console.log('  GET  /mcp/stream - Establish SSE connection');
-  console.log('  POST /mcp/stream - Send MCP method calls via SSE');
+  console.log('\n🎉 All MCP tests completed!');
+  console.log('\nMCP Streamable HTTP endpoints:');
+  console.log('  GET  /mcp (Accept: text/event-stream) - Listen for server messages');
+  console.log('  POST /mcp (Accept: text/event-stream|application/json) - Send requests');
   console.log('  GET  /mcp/health - Server health check');
   console.log('  GET  /mcp/info   - Server information');
 }
 
-if (require.main === module) {
-  main().catch(console.error);
-}
+// Run if this file is executed directly
+main().catch(console.error);

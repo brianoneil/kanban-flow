@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
+import session from "express-session";
 import { storage } from "./storage";
 import { insertCardSchema, updateCardSchema } from "@shared/schema";
 import {
@@ -22,9 +23,67 @@ function broadcast(event: { type: string; data: any }) {
   }
 }
 
+// Simple passcode - in production you'd want this as an environment variable
+const PASSCODE = "1234";
+
+// Session middleware setup
+function setupSession(app: Express) {
+  app.use(session({
+    secret: process.env.SESSION_SECRET || "kanban-session-secret-dev",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  }));
+}
+
+// Authentication middleware
+function requireAuth(req: any, res: any, next: any) {
+  if (req.session?.authenticated) {
+    return next();
+  }
+  return res.status(401).json({ message: "Authentication required" });
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup session middleware
+  setupSession(app);
+
+  // Auth routes
+  app.post("/api/auth/login", (req: any, res) => {
+    const { passcode } = req.body;
+    
+    if (passcode === PASSCODE) {
+      req.session.authenticated = true;
+      res.json({ success: true, message: "Login successful" });
+    } else {
+      res.status(401).json({ message: "Invalid passcode" });
+    }
+  });
+
+  app.get("/api/auth/verify", (req: any, res) => {
+    if (req.session?.authenticated) {
+      res.json({ authenticated: true });
+    } else {
+      res.status(401).json({ authenticated: false });
+    }
+  });
+
+  app.post("/api/auth/logout", (req: any, res) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        res.status(500).json({ message: "Logout failed" });
+      } else {
+        res.json({ success: true, message: "Logout successful" });
+      }
+    });
+  });
+  // Protected routes - require authentication
   // Get all cards
-  app.get("/api/cards", async (req, res) => {
+  app.get("/api/cards", requireAuth, async (req, res) => {
     try {
       const { status, project } = req.query;
       const cards = await storage.getAllCards(project as string);
@@ -43,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all projects
-  app.get("/api/projects", async (req, res) => {
+  app.get("/api/projects", requireAuth, async (req, res) => {
     try {
       const projects = await storage.getProjects();
       res.json(projects);
@@ -53,7 +112,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get cards summary (titles and statuses only)
-  app.get("/api/cards/summary", async (req, res) => {
+  app.get("/api/cards/summary", requireAuth, async (req, res) => {
     try {
       const { project } = req.query;
       const cards = await storage.getAllCards(project as string);
@@ -74,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get cards summary as markdown
-  app.get("/api/cards/summary/markdown", async (req, res) => {
+  app.get("/api/cards/summary/markdown", requireAuth, async (req, res) => {
     try {
       const { project } = req.query;
       const cards = await storage.getAllCards(project as string);
@@ -126,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get cards grouped by status (must come before the :id route)
-  app.get("/api/cards/by-status", async (req, res) => {
+  app.get("/api/cards/by-status", requireAuth, async (req, res) => {
     try {
       const { project } = req.query;
       const cards = await storage.getAllCards(project as string);
@@ -150,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get single card
-  app.get("/api/cards/:id", async (req, res) => {
+  app.get("/api/cards/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const card = await storage.getCard(id);
@@ -166,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create new card
-  app.post("/api/cards", async (req, res) => {
+  app.post("/api/cards", requireAuth, async (req, res) => {
     try {
       const validatedData = insertCardSchema.parse(req.body);
       const card = await storage.createCard(validatedData);
@@ -190,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update card
-  app.patch("/api/cards/:id", async (req, res) => {
+  app.patch("/api/cards/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = updateCardSchema.parse(req.body);
@@ -218,7 +277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete card
-  app.delete("/api/cards/:id", async (req, res) => {
+  app.delete("/api/cards/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteCard(id);
@@ -237,7 +296,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk delete cards by IDs
-  app.delete("/api/cards/bulk", async (req, res) => {
+  app.delete("/api/cards/bulk", requireAuth, async (req, res) => {
     try {
       const { ids } = req.body;
       
@@ -279,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Move card to specific status (simplified endpoint)
-  app.post("/api/cards/:id/move", async (req, res) => {
+  app.post("/api/cards/:id/move", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { status, position } = req.body;
@@ -329,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reorder cards within a status (legacy endpoint - kept for compatibility)
-  app.post("/api/cards/reorder", async (req, res) => {
+  app.post("/api/cards/reorder", requireAuth, async (req, res) => {
     try {
       const { cardId, newStatus, newOrder } = req.body;
       
@@ -355,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Batch move multiple cards
-  app.post("/api/cards/batch-move", async (req, res) => {
+  app.post("/api/cards/batch-move", requireAuth, async (req, res) => {
     try {
       const { operations } = req.body;
       

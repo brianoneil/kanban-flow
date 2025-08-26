@@ -2,16 +2,18 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, LogOut } from "lucide-react";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { KanbanBoard } from "@/components/kanban-board";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { CardsSummary } from "@/components/cards-summary";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Kanban() {
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const { toast } = useToast();
+  const { logout } = useAuth();
 
   const { data: projects = [] } = useQuery({
     queryKey: ['/api/projects'],
@@ -74,7 +76,20 @@ export default function Kanban() {
               </Button>
             </div>
           </div>
-          <ThemeToggle />
+          
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={logout}
+              className="flex items-center gap-2"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <main className="w-full py-8">

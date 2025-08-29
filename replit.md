@@ -100,6 +100,14 @@ The architecture supports both development (with in-memory storage) and producti
 
 ## Recent Changes
 
+### August 29, 2025
+- **4-Digit Passcode Authentication**: Added simple session-based authentication to protect the Kanban board
+- **Login Page**: Clean UI requiring 4-digit passcode (default: 1234) with 24-hour session persistence
+- **Protected Web API**: All /api endpoints now require authentication for web access
+- **MCP Access Preserved**: MCP endpoints (/mcp/*) remain accessible without authentication for external clients
+- **Logout Functionality**: Added logout button to Kanban header for session termination
+- **Express Session**: Implemented secure session management with express-session middleware
+
 ### August 13, 2025
 - **Project Tags on Cards**: Added small blue project badges below card titles for easy project identification
 - **MCP Streamable HTTP**: Implemented proper MCP Streamable HTTP transport following 2025-06-18 specification

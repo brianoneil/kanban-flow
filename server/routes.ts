@@ -42,6 +42,11 @@ function setupSession(app: Express) {
 
 // Authentication middleware
 function requireAuth(req: any, res: any, next: any) {
+  // Skip authentication for MCP endpoints - external clients need access
+  if (req.path.startsWith('/mcp')) {
+    return next();
+  }
+  
   if (req.session?.authenticated) {
     return next();
   }

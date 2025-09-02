@@ -6,12 +6,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// CORS support for MCP endpoints (needed for Claude Desktop)
+// Enhanced CORS support for MCP endpoints (needed for external MCP clients)
 app.use((req, res, next) => {
   if (req.path.startsWith('/mcp')) {
     res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, User-Agent, Mcp-Session-Id, Mcp-Protocol-Version');
+    res.header('Access-Control-Expose-Headers', 'Mcp-Session-Id');
+    res.header('Access-Control-Max-Age', '86400');
     
     if (req.method === 'OPTIONS') {
       res.sendStatus(200);

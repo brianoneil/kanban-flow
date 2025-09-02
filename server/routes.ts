@@ -1091,6 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const acceptHeader = req.headers.accept || '';
       
       console.log(`[MCP] Request: ${method}`, params ? JSON.stringify(params) : 'no params');
+      console.log(`[MCP] Headers:`, JSON.stringify(req.headers, null, 2));
 
       if (jsonrpc !== "2.0") {
         return res.status(400).json({
@@ -1103,7 +1104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle notifications and responses (should return 202 Accepted)
       if (!id || method === "notifications/initialized") {
         console.log(`[MCP] Handling notification: ${method}`);
-        return res.status(202).send();
+        return res.status(202).json({ received: true });
       }
 
       // For requests, check if client accepts SSE or JSON
@@ -1124,12 +1125,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       switch (method) {
         case "initialize":
           const clientProtocolVersion = params?.protocolVersion || "2024-11-05";
+          console.log(`[MCP] Initialize request from client:`, JSON.stringify(params?.clientInfo || {}, null, 2));
           // Generate session ID for initialization
           sessionId = randomUUID();
           result = {
             protocolVersion: clientProtocolVersion,
             capabilities: {
-              tools: { listChanged: true },
+              tools: { 
+                listChanged: true
+              },
               logging: {}
             },
             serverInfo: {
@@ -1137,6 +1141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               version: "1.0.0"
             }
           };
+          console.log(`[MCP] Sending initialize response with session: ${sessionId}`);
           break;
 
         case "tools/list":

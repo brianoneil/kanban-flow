@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import session from "express-session";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertCardSchema, updateCardSchema } from "@shared/schema";
 import {
@@ -1124,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         case "initialize":
           const clientProtocolVersion = params?.protocolVersion || "2024-11-05";
           // Generate session ID for initialization
-          sessionId = require('crypto').randomUUID();
+          sessionId = randomUUID();
           result = {
             protocolVersion: clientProtocolVersion,
             capabilities: {

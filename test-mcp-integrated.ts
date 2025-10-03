@@ -36,6 +36,7 @@ async function mcpRequest(method: string, params?: any): Promise<any> {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json, text/event-stream'
     },
     body: JSON.stringify(request)
   });
@@ -68,6 +69,19 @@ async function testServerInfo() {
   const info = await response.json();
   console.log(`✅ Server info: ${info.name} v${info.version} with ${info.tools.length} tools`);
   return info;
+}
+
+async function testInitialize() {
+  console.log('🔧 Testing initialize...');
+  const result = await mcpRequest('initialize', {
+    protocolVersion: "2024-11-05",
+    clientInfo: {
+      name: "test-client",
+      version: "1.0.0"
+    }
+  });
+  console.log('✅ Initialize successful');
+  return result;
 }
 
 async function testListTools() {
@@ -200,6 +214,7 @@ async function runTests() {
     console.log();
 
     // Test MCP protocol endpoints
+    await testInitialize();
     await testListTools();
     console.log();
 

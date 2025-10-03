@@ -1,0 +1,54 @@
+{
+  "name": "kanban-flow",
+  "description": "A modern Kanban board application with MCP integration for AI agents",
+  "keywords": ["kanban", "project-management", "mcp", "ai", "productivity"],
+  "website": "https://github.com/boneil/kanban-flow",
+  "repository": "https://github.com/boneil/kanban-flow",
+  "logo": "",
+  "success_url": "/",
+  "scripts": {
+    "dokku": {
+      "predeploy": "npm run build"
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "max_parallel": 1
+    }
+  },
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Node environment",
+      "value": "production"
+    },
+    "DATABASE_URL": {
+      "description": "Hosted database connection string (e.g., postgresql://user:password@host/database?sslmode=require)",
+      "required": true
+    },
+    "SESSION_SECRET": {
+      "description": "Secret key for session management",
+      "generator": "secret"
+    },
+    "PORT": {
+      "description": "Port for the web server",
+      "value": "5000"
+    }
+  },
+  "healthchecks": {
+    "web": [
+      {
+        "type": "startup",
+        "name": "web check",
+        "description": "Checking if the app responds to the health endpoint",
+        "path": "/api/health",
+        "attempts": 3
+      }
+    ]
+  }
+}

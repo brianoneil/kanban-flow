@@ -1,0 +1,54 @@
+{
+  "name": "kanban-mcp-server",
+  "version": "1.1.0",
+  "description": "Model Context Protocol (MCP) server for Kanban board management. Provides AI agents with tools to interact with Kanban boards - create, read, update, and delete cards, manage projects, and organize workflows.",
+  "main": "dist/index.js",
+  "bin": {
+    "kanban-mcp-server": "dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "kanban",
+    "project-management",
+    "ai",
+    "claude",
+    "cursor",
+    "tools",
+    "productivity"
+  ],
+  "author": "boneil",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boneil/kanban-mcp-server.git"
+  },
+  "homepage": "https://github.com/boneil/kanban-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/boneil/kanban-mcp-server/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.11",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ]
+}

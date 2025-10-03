@@ -98,21 +98,25 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-xl">
         <DialogHeader>
-          <DialogTitle>Add New Card</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">Add New Card</DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter card title" {...field} />
+                    <Input
+                      placeholder="Enter card title"
+                      className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -124,11 +128,11 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Enter card description"
-                      className="min-h-[80px]"
+                    <Textarea
+                      placeholder="Enter card description (Markdown supported)"
+                      className="min-h-[100px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 resize-none"
                       {...field}
                     />
                   </FormControl>
@@ -142,11 +146,12 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
               name="link"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Link (Optional)</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">Link (Optional)</FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       placeholder="https://example.com"
                       type="url"
+                      className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
                       {...field}
                     />
                   </FormControl>
@@ -160,16 +165,20 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
               name="status"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                       {KANBAN_STATUSES.map(status => (
-                        <SelectItem key={status} value={status}>
+                        <SelectItem
+                          key={status}
+                          value={status}
+                          className="hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700"
+                        >
                           {getStatusLabel(status)}
                         </SelectItem>
                       ))}
@@ -180,19 +189,19 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
               )}
             />
             
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => onOpenChange(false)}
-                className="flex-1"
+                className="flex-1 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={createCardMutation.isPending}
-                className="flex-1"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createCardMutation.isPending ? "Creating..." : "Create Card"}
               </Button>

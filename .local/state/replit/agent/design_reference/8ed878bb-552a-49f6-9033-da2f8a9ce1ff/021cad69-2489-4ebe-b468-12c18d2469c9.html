@@ -1,0 +1,592 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board - Task Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'status-not-started': '#6B7280',
+                        'status-blocked': '#EF4444',
+                        'status-in-progress': '#3B82F6',
+                        'status-complete': '#10B981',
+                        'status-verified': '#8B5CF6',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 font-inter">
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center justify-between max-w-7xl mx-auto">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-2xl font-bold text-gray-900">Kanban Board</h1>
+                <span class="text-sm text-gray-500">Project Management</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2">
+                    <i class="fas fa-plus text-sm"></i>
+                    <span>Add Card</span>
+                </button>
+                <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Kanban Board -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 min-h-screen">
+            
+            <!-- Not Started Column -->
+            <!-- @COMPONENT: KanbanColumn [status: "not-started", title: "Not Started", color: "gray"] -->
+            <div class="kanban-column" data-status="not-started">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 min-h-full">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-status-not-started"></div>
+                                <h3 class="font-semibold text-gray-800">Not Started</h3>
+                            </div>
+                            <span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full font-medium" data-mock="true">3</span>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-3" data-drop-zone="not-started">
+                        
+                        <!-- Card 1 -->
+                        <!-- @COMPONENT: TaskCard [id: "card-1", draggable: true] -->
+                        <div class="task-card bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="1" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1" data-bind="card.title">User Authentication System</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3 line-clamp-2" data-bind="card.description">Implement secure user login and registration with OAuth integration for Google and GitHub providers.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1" data-bind="card.link">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs text-gray-500">ID: #1001</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2 -->
+                        <div class="task-card bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="2" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">Database Schema Design</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Design and create database schema for user management and task tracking with proper relationships.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs text-gray-500">ID: #1002</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 3 -->
+                        <div class="task-card bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="3" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">Mobile App Wireframes</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Create detailed wireframes for mobile application user interface and user experience.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-xs text-gray-500">ID: #1003</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_COMPONENT: KanbanColumn -->
+
+            <!-- Blocked Column -->
+            <div class="kanban-column" data-status="blocked">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 min-h-full">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-red-50 rounded-t-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-status-blocked"></div>
+                                <h3 class="font-semibold text-gray-800">Blocked</h3>
+                            </div>
+                            <span class="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full font-medium" data-mock="true">1</span>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-3" data-drop-zone="blocked">
+                        
+                        <!-- Blocked Card -->
+                        <div class="task-card bg-white border border-red-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="4" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">API Integration Testing</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Waiting for third-party API documentation to complete integration testing.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-exclamation-triangle text-red-500 text-xs"></i>
+                                    <span class="text-xs text-gray-500">ID: #1004</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In Progress Column -->
+            <div class="kanban-column" data-status="in-progress">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 min-h-full">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-blue-50 rounded-t-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-status-in-progress"></div>
+                                <h3 class="font-semibold text-gray-800">In Progress</h3>
+                            </div>
+                            <span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full font-medium" data-mock="true">2</span>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-3" data-drop-zone="in-progress">
+                        
+                        <!-- In Progress Card 1 -->
+                        <div class="task-card bg-white border border-blue-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="5" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">Frontend Component Library</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Building reusable React components for the design system with TypeScript support.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                                    <span class="text-xs text-gray-500">ID: #1005</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- In Progress Card 2 -->
+                        <div class="task-card bg-white border border-blue-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="6" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">Payment Gateway Setup</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Implementing Stripe payment processing with secure checkout flow and webhook handling.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                                    <span class="text-xs text-gray-500">ID: #1006</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complete Column -->
+            <div class="kanban-column" data-status="complete">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 min-h-full">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-green-50 rounded-t-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-status-complete"></div>
+                                <h3 class="font-semibold text-gray-800">Complete</h3>
+                            </div>
+                            <span class="bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full font-medium" data-mock="true">2</span>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-3" data-drop-zone="complete">
+                        
+                        <!-- Complete Card 1 -->
+                        <div class="task-card bg-white border border-green-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="7" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">User Dashboard UI</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Responsive dashboard interface with analytics widgets and user profile management.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-check-circle text-green-500 text-xs"></i>
+                                    <span class="text-xs text-gray-500">ID: #1007</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Complete Card 2 -->
+                        <div class="task-card bg-white border border-green-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="8" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">Email Notification System</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Automated email notifications for user actions with customizable templates.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-check-circle text-green-500 text-xs"></i>
+                                    <span class="text-xs text-gray-500">ID: #1008</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verified Column -->
+            <div class="kanban-column" data-status="verified">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 min-h-full">
+                    <div class="px-4 py-3 border-b border-gray-200 bg-purple-50 rounded-t-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 rounded-full bg-status-verified"></div>
+                                <h3 class="font-semibold text-gray-800">Verified</h3>
+                            </div>
+                            <span class="bg-purple-100 text-purple-600 text-xs px-2 py-1 rounded-full font-medium" data-mock="true">1</span>
+                        </div>
+                    </div>
+                    <div class="p-4 space-y-3" data-drop-zone="verified">
+                        
+                        <!-- Verified Card -->
+                        <div class="task-card bg-white border border-purple-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105" draggable="true" data-card-id="9" data-mock="true">
+                            <div class="flex items-start justify-between mb-2">
+                                <h4 class="font-medium text-gray-900 flex-1">Security Audit</h4>
+                                <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-3">Comprehensive security review and penetration testing completed successfully.</p>
+                            <div class="flex items-center justify-between">
+                                <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                                    <span>View Details</span>
+                                    <i class="fas fa-external-link-alt text-xs"></i>
+                                </a>
+                                <div class="flex items-center space-x-2">
+                                    <i class="fas fa-shield-alt text-purple-500 text-xs"></i>
+                                    <span class="text-xs text-gray-500">ID: #1009</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Drag Overlay -->
+    <div id="drag-overlay" class="fixed inset-0 bg-black bg-opacity-10 z-40 hidden pointer-events-none"></div>
+
+    <script>
+        (function() {
+            // Drag and Drop State
+            let draggedCard = null;
+            let draggedCardOriginalParent = null;
+            let placeholder = null;
+
+            // Card counter for new cards
+            let cardCounter = 10;
+
+            // Create placeholder element
+            function createPlaceholder() {
+                const div = document.createElement('div');
+                div.className = 'bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 opacity-50';
+                div.innerHTML = '<div class="h-20"></div>';
+                return div;
+            }
+
+            // Initialize drag and drop
+            function initializeDragAndDrop() {
+                const cards = document.querySelectorAll('.task-card');
+                const dropZones = document.querySelectorAll('[data-drop-zone]');
+
+                // Add drag event listeners to cards
+                cards.forEach(card => {
+                    card.addEventListener('dragstart', handleDragStart);
+                    card.addEventListener('dragend', handleDragEnd);
+                });
+
+                // Add drop event listeners to zones
+                dropZones.forEach(zone => {
+                    zone.addEventListener('dragover', handleDragOver);
+                    zone.addEventListener('drop', handleDrop);
+                    zone.addEventListener('dragenter', handleDragEnter);
+                    zone.addEventListener('dragleave', handleDragLeave);
+                });
+            }
+
+            function handleDragStart(e) {
+                draggedCard = this;
+                draggedCardOriginalParent = this.parentNode;
+                
+                // Create placeholder
+                placeholder = createPlaceholder();
+                
+                // Style the dragged card
+                this.style.opacity = '0.5';
+                this.style.transform = 'rotate(5deg)';
+                
+                // Show overlay
+                document.getElementById('drag-overlay').classList.remove('hidden');
+                
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/html', this.innerHTML);
+            }
+
+            function handleDragEnd(e) {
+                // Reset card style
+                this.style.opacity = '';
+                this.style.transform = '';
+                
+                // Remove placeholder if it exists
+                if (placeholder && placeholder.parentNode) {
+                    placeholder.parentNode.removeChild(placeholder);
+                }
+                
+                // Hide overlay
+                document.getElementById('drag-overlay').classList.add('hidden');
+                
+                // Reset drag state
+                draggedCard = null;
+                draggedCardOriginalParent = null;
+                placeholder = null;
+            }
+
+            function handleDragOver(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                // Find the best position for placeholder
+                const afterElement = getDragAfterElement(this, e.clientY);
+                if (afterElement == null) {
+                    this.appendChild(placeholder);
+                } else {
+                    this.insertBefore(placeholder, afterElement);
+                }
+            }
+
+            function handleDragEnter(e) {
+                e.preventDefault();
+                this.classList.add('bg-blue-50');
+            }
+
+            function handleDragLeave(e) {
+                // Only remove highlight if we're actually leaving the drop zone
+                if (!this.contains(e.relatedTarget)) {
+                    this.classList.remove('bg-blue-50');
+                }
+            }
+
+            function handleDrop(e) {
+                e.preventDefault();
+                this.classList.remove('bg-blue-50');
+                
+                if (draggedCard) {
+                    // Get the new status from the drop zone
+                    const newStatus = this.getAttribute('data-drop-zone');
+                    const oldStatus = draggedCardOriginalParent.getAttribute('data-drop-zone');
+                    
+                    // Replace placeholder with actual card
+                    if (placeholder && placeholder.parentNode) {
+                        placeholder.parentNode.replaceChild(draggedCard, placeholder);
+                    }
+                    
+                    // Update card border color based on new status
+                    updateCardStyle(draggedCard, newStatus);
+                    
+                    // Update counters
+                    updateColumnCounters();
+                    
+                    // Simulate API call
+                    if (newStatus !== oldStatus) {
+                        simulateAPICall(draggedCard, newStatus, oldStatus);
+                    }
+                }
+            }
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.task-card:not(.opacity-50)')];
+                
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function updateCardStyle(card, status) {
+                // Remove existing border classes
+                card.classList.remove('border-gray-200', 'border-red-200', 'border-blue-200', 'border-green-200', 'border-purple-200');
+                
+                // Add appropriate border color
+                switch(status) {
+                    case 'not-started':
+                        card.classList.add('border-gray-200');
+                        break;
+                    case 'blocked':
+                        card.classList.add('border-red-200');
+                        break;
+                    case 'in-progress':
+                        card.classList.add('border-blue-200');
+                        break;
+                    case 'complete':
+                        card.classList.add('border-green-200');
+                        break;
+                    case 'verified':
+                        card.classList.add('border-purple-200');
+                        break;
+                }
+            }
+
+            function updateColumnCounters() {
+                const columns = document.querySelectorAll('.kanban-column');
+                
+                columns.forEach(column => {
+                    const cards = column.querySelectorAll('.task-card');
+                    const counter = column.querySelector('span[data-mock="true"]');
+                    if (counter) {
+                        counter.textContent = cards.length;
+                    }
+                });
+            }
+
+            function simulateAPICall(card, newStatus, oldStatus) {
+                const cardId = card.getAttribute('data-card-id');
+                
+                // TODO: Replace with actual API call
+                console.log(`API Call: Moving card ${cardId} from ${oldStatus} to ${newStatus}`);
+                
+                // Simulate loading state
+                card.style.opacity = '0.6';
+                card.style.pointerEvents = 'none';
+                
+                // Simulate API response after delay
+                setTimeout(() => {
+                    card.style.opacity = '';
+                    card.style.pointerEvents = '';
+                    
+                    // Add success animation
+                    card.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        card.style.transform = '';
+                    }, 200);
+                    
+                    console.log(`API Response: Card ${cardId} successfully moved to ${newStatus}`);
+                }, 1000);
+            }
+
+            // Add new card functionality
+            function addNewCard() {
+                const newCard = document.createElement('div');
+                newCard.className = 'task-card bg-white border border-gray-200 rounded-lg p-4 cursor-move hover:shadow-md transition-all duration-200 hover:scale-105';
+                newCard.draggable = true;
+                newCard.setAttribute('data-card-id', cardCounter++);
+                newCard.setAttribute('data-mock', 'true');
+                
+                newCard.innerHTML = `
+                    <div class="flex items-start justify-between mb-2">
+                        <h4 class="font-medium text-gray-900 flex-1">New Task ${cardCounter - 1}</h4>
+                        <i class="fas fa-grip-vertical text-gray-400 text-sm ml-2"></i>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-3">Click to edit this task description and add more details.</p>
+                    <div class="flex items-center justify-between">
+                        <a href="#" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                            <span>View Details</span>
+                            <i class="fas fa-external-link-alt text-xs"></i>
+                        </a>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-gray-500">ID: #${1000 + cardCounter - 1}</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Add to Not Started column
+                const notStartedZone = document.querySelector('[data-drop-zone="not-started"]');
+                notStartedZone.appendChild(newCard);
+                
+                // Add drag event listeners
+                newCard.addEventListener('dragstart', handleDragStart);
+                newCard.addEventListener('dragend', handleDragEnd);
+                
+                // Update counter
+                updateColumnCounters();
+                
+                // Add entrance animation
+                newCard.style.opacity = '0';
+                newCard.style.transform = 'translateY(-20px)';
+                setTimeout(() => {
+                    newCard.style.transition = 'all 0.3s ease';
+                    newCard.style.opacity = '1';
+                    newCard.style.transform = 'translateY(0)';
+                }, 10);
+            }
+
+            // Initialize everything
+            document.addEventListener('DOMContentLoaded', function() {
+                initializeDragAndDrop();
+                
+                // Add event listener to "Add Card" button
+                const addButton = document.querySelector('button');
+                if (addButton && addButton.textContent.includes('Add Card')) {
+                    addButton.addEventListener('click', addNewCard);
+                }
+            });
+
+            // Add some hover effects for better UX
+            document.addEventListener('DOMContentLoaded', function() {
+                const cards = document.querySelectorAll('.task-card');
+                
+                cards.forEach(card => {
+                    card.addEventListener('mouseenter', function() {
+                        if (!this.classList.contains('opacity-50')) {
+                            this.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.15)';
+                        }
+                    });
+                    
+                    card.addEventListener('mouseleave', function() {
+                        this.style.boxShadow = '';
+                    });
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

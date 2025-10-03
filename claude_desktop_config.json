@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "kanban": {
-      "command": "tsx",
-      "args": ["./mcp-server.ts"],
+      "command": "npx",
+      "args": ["tsx", "/Users/boneil/projects/brainivy/KanbanFlow/mcp-server.ts"],
       "env": {
-        "KANBAN_SERVER_URL": "http://localhost:5000"
+        "KANBAN_SERVER_URL": "http://localhost:3000"
       }
     }
   }

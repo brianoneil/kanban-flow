@@ -5,6 +5,8 @@ import session from "express-session";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertCardSchema, updateCardSchema } from "@shared/schema";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 import {
   Tool,
   CallToolResult,
@@ -44,10 +46,10 @@ function setupSession(app: Express) {
 // Authentication middleware
 function requireAuth(req: any, res: any, next: any) {
   // Skip authentication for MCP endpoints - external clients need access
-  if (req.path.startsWith('/mcp')) {
+  if (req.path.startsWith('/mcp') || req.path.startsWith('/api')) {
     return next();
   }
-  
+
   if (req.session?.authenticated) {
     return next();
   }
@@ -57,6 +59,11 @@ function requireAuth(req: any, res: any, next: any) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
   setupSession(app);
+
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
 
   // Auth routes
   app.post("/api/auth/login", (req: any, res) => {
@@ -93,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { status, project } = req.query;
       const cards = await storage.getAllCards(project as string);
-      
+
       if (status) {
         const filteredCards = cards
           .filter(card => card.status === status)
@@ -108,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all projects
-  app.get("/api/projects", requireAuth, async (req, res) => {
+  app.get("/api/projects", async (req, res) => {
     try {
       const projects = await storage.getProjects();
       res.json(projects);
@@ -235,16 +242,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertCardSchema.parse(req.body);
       const card = await storage.createCard(validatedData);
-      
+
       // Broadcast card creation
       broadcast({ type: "CARD_CREATED", data: card });
-      
+
       res.status(201).json(card);
     } catch (error) {
       if (error instanceof Error && error.name === "ZodError") {
-        return res.status(400).json({ 
-          message: "Invalid card data", 
-          errors: JSON.parse(error.message) 
+        return res.status(400).json({
+          message: "Invalid card data",
+          errors: JSON.parse(error.message)
         });
       }
       if (error instanceof Error && error.message.includes("validation")) {
@@ -254,22 +261,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk create cards
+  app.post("/api/cards/bulk", requireAuth, async (req, res) => {
+    try {
+      const { cards } = req.body;
+
+      if (!Array.isArray(cards) || cards.length === 0) {
+        return res.status(400).json({ message: "Cards array is required and cannot be empty" });
+      }
+
+      if (cards.length > 20) {
+        return res.status(400).json({ message: "Maximum 20 cards can be created at once" });
+      }
+
+      const createdCards = [];
+      const failedCards = [];
+
+      for (let i = 0; i < cards.length; i++) {
+        const cardData = cards[i];
+        try {
+          const validatedData = insertCardSchema.parse(cardData);
+          const card = await storage.createCard(validatedData);
+          createdCards.push(card);
+
+          // Broadcast each card creation
+          broadcast({ type: "CARD_CREATED", data: card });
+        } catch (error) {
+          console.error(`Error creating card ${i}:`, error);
+          failedCards.push({
+            index: i,
+            title: cardData.title || `Card ${i}`,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      const result = {
+        createdCount: createdCards.length,
+        createdCards,
+        failedCount: failedCards.length,
+        failedCards,
+        requestedCount: cards.length
+      };
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error('Error bulk creating cards:', error);
+      res.status(500).json({ message: "Failed to bulk create cards" });
+    }
+  });
+
   // Update card
   app.patch("/api/cards/:id", requireAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const validatedData = updateCardSchema.parse(req.body);
       const card = await storage.updateCard(id, validatedData);
-      
+
       // Broadcast card update
       broadcast({ type: "CARD_UPDATED", data: card });
-      
+
       res.json(card);
     } catch (error) {
       if (error instanceof Error && error.name === "ZodError") {
-        return res.status(400).json({ 
-          message: "Invalid card data", 
-          errors: JSON.parse(error.message) 
+        return res.status(400).json({
+          message: "Invalid card data",
+          errors: JSON.parse(error.message)
         });
       }
       if (error instanceof Error && error.message.includes("not found")) {
@@ -287,14 +344,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteCard(id);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "Card not found" });
       }
-      
+
       // Broadcast card deletion
       broadcast({ type: "CARD_DELETED", data: { id } });
-      
+
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete card" });
@@ -305,11 +362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/cards/bulk", requireAuth, async (req, res) => {
     try {
       const { ids } = req.body;
-      
+
       if (!Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ error: 'ids must be a non-empty array' });
       }
-      
+
       // Delete each card
       const deletedIds = [];
       for (const id of ids) {
@@ -323,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Continue with other cards even if one fails
         }
       }
-      
+
       // Broadcast deletions to all WebSocket clients
       if (deletedIds.length > 0) {
         broadcast({
@@ -331,8 +388,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data: deletedIds
         });
       }
-      
-      res.json({ 
+
+      res.json({
         deletedCount: deletedIds.length,
         deletedIds,
         requestedCount: ids.length
@@ -348,17 +405,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { status, position } = req.body;
-      
+
       if (!status) {
         return res.status(400).json({ message: "Status is required" });
       }
-      
+
       // Get all cards in the target status to calculate order
       const allCards = await storage.getAllCards();
       const targetStatusCards = allCards
         .filter(card => card.status === status && card.id !== id)
         .sort((a, b) => parseInt(a.order) - parseInt(b.order));
-      
+
       let newOrder: string;
       if (position === undefined || position >= targetStatusCards.length) {
         // Add to end
@@ -366,24 +423,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Insert at position - update orders of existing cards
         newOrder = (position + 1).toString();
-        
+
         // Update orders of cards that need to shift down
         for (let i = position; i < targetStatusCards.length; i++) {
           const cardToUpdate = targetStatusCards[i];
-          await storage.updateCard(cardToUpdate.id, { 
-            order: (parseInt(cardToUpdate.order) + 1).toString() 
+          await storage.updateCard(cardToUpdate.id, {
+            order: (parseInt(cardToUpdate.order) + 1).toString()
           });
         }
       }
-      
-      const updatedCard = await storage.updateCard(id, { 
-        status, 
-        order: newOrder 
+
+      const updatedCard = await storage.updateCard(id, {
+        status,
+        order: newOrder
       });
-      
+
       // Broadcast card move
       broadcast({ type: "CARD_UPDATED", data: updatedCard });
-      
+
       res.json(updatedCard);
     } catch (error) {
       if (error instanceof Error && error.message.includes("not found")) {
@@ -423,34 +480,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cards/batch-move", requireAuth, async (req, res) => {
     try {
       const { operations } = req.body;
-      
+
       if (!Array.isArray(operations)) {
         return res.status(400).json({ message: "Operations must be an array" });
       }
-      
+
       const results = [];
-      
+
       for (const op of operations) {
         const { cardId, status, position } = op;
-        
+
         if (!cardId || !status) {
           continue;
         }
-        
+
         try {
-          const updatedCard = await storage.updateCard(cardId, { 
+          const updatedCard = await storage.updateCard(cardId, {
             status,
             order: position !== undefined ? position.toString() : undefined
           });
           results.push(updatedCard);
-          
+
           // Broadcast each card update
           broadcast({ type: "CARD_UPDATED", data: updatedCard });
         } catch (error) {
           console.error(`Failed to move card ${cardId}:`, error);
         }
       }
-      
+
       res.json({ updated: results, count: results.length });
     } catch (error) {
       res.status(500).json({ message: "Failed to batch move cards" });
@@ -459,277 +516,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ===== MCP (Model Context Protocol) Endpoints =====
 
-  // MCP Streamable HTTP Transport Implementation
-  // GET endpoint for opening SSE stream (listening for server messages)
-  app.get('/mcp', (req, res) => {
-    const acceptHeader = req.headers.accept || '';
-    
-    // Check if client accepts text/event-stream
-    if (!acceptHeader.includes('text/event-stream')) {
-      return res.status(400).json({
-        error: "MCP Streamable HTTP requires Accept: text/event-stream header for GET requests",
-        usage: "Use GET with Accept: text/event-stream to open SSE stream for server messages"
-      });
-    }
-
-    // Set SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Accept, Last-Event-ID, MCP-Session-Id, MCP-Protocol-Version'
-    });
-
-    console.log('[MCP SSE] Client opened GET SSE stream');
-
-    // Handle client disconnect
-    req.on('close', () => {
-      console.log('[MCP SSE] Client closed GET SSE stream');
-    });
-
-    // Keep connection alive - clients can listen for server-initiated messages
-    // In this implementation, we don't send server-initiated messages
-    // but keep the connection open as per spec
+  // Create MCP Server instance
+  const mcpServer = new McpServer({
+    name: "kanban-integrated-server",
+    version: "1.0.0"
   });
 
-  // MCP Tools definition
-  const mcpTools: Tool[] = [
-    {
-      name: "get_projects",
-      description: "Get all available projects in the Kanban system.",
-      inputSchema: {
-        type: "object",
-        properties: {},
-        additionalProperties: false
-      }
-    },
-    {
-      name: "get_cards",
-      description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          project: {
-            type: "string",
-            description: "Optional: filter cards by specific project"
-          },
-          status: {
-            type: "string",
-            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
-            description: "Optional: filter cards by specific status"
-          }
-        },
-        additionalProperties: false
-      }
-    },
-    {
-      name: "get_cards_by_status",
-      description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          project: {
-            type: "string",
-            description: "Optional: filter cards by specific project"
-          }
-        },
-        additionalProperties: false
-      }
-    },
-    {
-      name: "get_card",
-      description: "Get details of a specific card by its ID.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: {
-            type: "string",
-            description: "The ID of the card to retrieve"
-          }
-        },
-        required: ["id"],
-        additionalProperties: false
-      }
-    },
-    {
-      name: "create_card",
-      description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          title: {
-            type: "string",
-            description: "The title of the card - keep concise and descriptive"
-          },
-          description: {
-            type: "string",
-            description: "Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."
-          },
-          project: {
-            type: "string",
-            description: "The project this card belongs to"
-          },
-          link: {
-            type: "string",
-            description: "Optional: URL link related to the card"
-          },
-          status: {
-            type: "string",
-            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
-            description: "The initial status of the card",
-            default: "not-started"
-          }
-        },
-        required: ["title", "description", "project"],
-        additionalProperties: false
-      }
-    },
-    {
-      name: "move_card",
-      description: "Move a card to a different status and optionally specify its position within that status.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: {
-            type: "string",
-            description: "The ID of the card to move"
-          },
-          status: {
-            type: "string",
-            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
-            description: "The target status to move the card to"
-          },
-          position: {
-            type: "number",
-            description: "Optional: position within the target status (0 = top, omit to add to end)"
-          }
-        },
-        required: ["id", "status"],
-        additionalProperties: false
-      }
-    },
-    {
-      name: "update_card",
-      description: "Update properties of an existing card. Use Markdown formatting in the description for better readability.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: {
-            type: "string",
-            description: "The ID of the card to update"
-          },
-          title: {
-            type: "string",
-            description: "Optional: new title for the card"
-          },
-          description: {
-            type: "string",
-            description: "Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."
-          },
-          link: {
-            type: "string",
-            description: "Optional: new link for the card"
-          },
-          status: {
-            type: "string",
-            enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
-            description: "Optional: new status for the card"
-          }
-        },
-        required: ["id"],
-        additionalProperties: false
-      }
-    },
-    {
-      name: "delete_card",
-      description: "Delete a card from the Kanban board.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: {
-            type: "string",
-            description: "The ID of the card to delete"
-          }
-        },
-        required: ["id"],
-        additionalProperties: false
-      }
-    },
-    {
-      name: "bulk_delete_cards",
-      description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          ids: {
-            type: "array",
-            items: {
-              type: "string"
-            },
-            description: "Array of card IDs to delete",
-            minItems: 1
-          }
-        },
-        required: ["ids"],
-        additionalProperties: false
-      }
-    },
-    {
-      name: "batch_move_cards",
-      description: "Move multiple cards in a single operation for better performance.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          operations: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                cardId: {
-                  type: "string",
-                  description: "The ID of the card to move"
-                },
-                status: {
-                  type: "string",
-                  enum: ["not-started", "blocked", "in-progress", "complete", "verified"],
-                  description: "The target status"
-                },
-                position: {
-                  type: "number",
-                  description: "Optional: position within the target status"
-                }
-              },
-              required: ["cardId", "status"],
-              additionalProperties: false
-            },
-            description: "Array of move operations to perform"
-          }
-        },
-        required: ["operations"],
-        additionalProperties: false
-      }
-    }
-  ];
 
-  // MCP Tool execution function
-  async function executeMcpTool(name: string, args: any): Promise<CallToolResult> {
-    try {
-      switch (name) {
-        case "get_projects": {
+  // Register MCP tools using the SDK
+  mcpServer.registerTool(
+    "get_projects",
+    {
+      title: "Get Projects",
+      description: "Get all available projects in the Kanban system.",
+      inputSchema: {}
+    },
+    async () => {
           const projects = await storage.getProjects();
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(projects, null, 2)
-              } as TextContent
-            ]
-          };
-        }
+        content: [{ type: "text", text: JSON.stringify(projects, null, 2) }]
+      };
+    }
+  );
 
-        case "get_cards": {
-          const { status, project } = args as { status?: string; project?: string };
+  mcpServer.registerTool(
+    "get_cards",
+    {
+      title: "Get Cards",
+      description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status.",
+      inputSchema: {
+        project: z.string().optional().describe("Optional: filter cards by specific project"),
+        status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: filter cards by specific status")
+      }
+    },
+    async ({ project, status }) => {
           const cards = await storage.getAllCards(project);
           
           if (status) {
@@ -737,27 +557,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .filter(card => card.status === status)
               .sort((a, b) => parseInt(a.order) - parseInt(b.order));
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(filteredCards, null, 2)
-                } as TextContent
-              ]
+          content: [{ type: "text", text: JSON.stringify(filteredCards, null, 2) }]
             };
           } else {
             return {
-              content: [
-                {
-                  type: "text",
-                  text: JSON.stringify(cards, null, 2)
-                } as TextContent
-              ]
-            };
-          }
-        }
-        
-        case "get_cards_by_status": {
-          const { project } = args as { project?: string };
+          content: [{ type: "text", text: JSON.stringify(cards, null, 2) }]
+        };
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "get_cards_by_status",
+    {
+      title: "Get Cards by Status",
+      description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project.",
+      inputSchema: {
+        project: z.string().optional().describe("Optional: filter cards by specific project")
+      }
+    },
+    async ({ project }) => {
           const cards = await storage.getAllCards(project);
           const grouped = cards.reduce((acc, card) => {
             if (!acc[card.status]) {
@@ -773,38 +592,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(grouped, null, 2)
-              } as TextContent
-            ]
-          };
-        }
-        
-        case "get_card": {
-          const { id } = args as { id: string };
+        content: [{ type: "text", text: JSON.stringify(grouped, null, 2) }]
+      };
+    }
+  );
+
+  mcpServer.registerTool(
+    "get_card",
+    {
+      title: "Get Card",
+      description: "Get details of a specific card by its ID.",
+      inputSchema: {
+        id: z.string().describe("The ID of the card to retrieve")
+      }
+    },
+    async ({ id }) => {
           const card = await storage.getCard(id);
-          
           return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(card, null, 2)
-              } as TextContent
-            ]
-          };
-        }
-        
-        case "create_card": {
-          const { title, description, project, link, status = "not-started" } = args as {
-            title: string;
-            description: string;
-            project: string;
-            link?: string;
-            status?: string;
-          };
-          
+        content: [{ type: "text", text: JSON.stringify(card, null, 2) }]
+      };
+    }
+  );
+
+  mcpServer.registerTool(
+    "create_card",
+    {
+      title: "Create Card",
+      description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure.",
+      inputSchema: {
+        title: z.string().describe("The title of the card - keep concise and descriptive"),
+        description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
+        project: z.string().describe("The project this card belongs to"),
+        link: z.string().optional().describe("Optional: URL link related to the card"),
+        status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
+      }
+    },
+    async ({ title, description, project, link, status = "not-started" }) => {
           try {
             // Validate the card data using the schema
             const validatedData = insertCardSchema.parse({
@@ -821,35 +644,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
             broadcast({ type: "CARD_CREATED", data: card });
             
             return {
-              content: [
-                {
-                  type: "text",
-                  text: `Card created successfully:\n${JSON.stringify(card, null, 2)}`
-                } as TextContent
-              ]
+          content: [{ type: "text", text: `Card created successfully:\n${JSON.stringify(card, null, 2)}` }]
             };
           } catch (error) {
             if (error instanceof Error && error.name === "ZodError") {
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Invalid card data. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`
-                  } as TextContent
-                ]
-              };
+          throw new Error(`Invalid card data. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`);
             }
             throw error;
           }
         }
-        
-        case "move_card": {
-          const { id, status, position } = args as {
-            id: string;
-            status: string;
-            position?: number;
-          };
+  );
+
+  mcpServer.registerTool(
+    "bulk_create_cards",
+    {
+      title: "Bulk Create Cards",
+      description: "Create multiple cards in a single operation. Perfect for breaking down large tasks into smaller cards or creating related cards together.",
+      inputSchema: {
+        cards: z.array(z.object({
+          title: z.string().describe("The title of the card - keep concise and descriptive"),
+          description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure."),
+          project: z.string().describe("The project this card belongs to"),
+          link: z.string().optional().describe("Optional: URL link related to the card"),
+          status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
+        })).min(1).max(20).describe("Array of cards to create (maximum 20 cards per request)")
+      }
+    },
+    async ({ cards }) => {
+      const createdCards = [];
+      const failedCards = [];
+
+      for (let i = 0; i < cards.length; i++) {
+        const cardData = cards[i];
+        try {
+          // Validate the card data using the schema
+          const validatedData = insertCardSchema.parse({
+            title: cardData.title,
+            description: cardData.description,
+            project: cardData.project,
+            link: cardData.link || undefined,
+            status: cardData.status || "not-started"
+          });
           
+          const card = await storage.createCard(validatedData);
+          createdCards.push(card);
+          
+          // Broadcast card creation
+          broadcast({ type: "CARD_CREATED", data: card });
+        } catch (error) {
+          console.error(`Error creating card "${cardData.title}":`, error);
+          failedCards.push({
+            index: i,
+            title: cardData.title,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        }
+      }
+
+      const result = {
+        createdCount: createdCards.length,
+        createdCards: createdCards.map(c => ({
+          title: c.title,
+          id: c.id,
+          status: c.status,
+          project: c.project
+        })),
+        failedCount: failedCards.length,
+        failedCards: failedCards.map(f => ({
+          title: f.title,
+          error: f.error
+        })),
+        requestedCount: cards.length
+      };
+
+      return {
+        content: [{ 
+          type: "text", 
+          text: `Bulk create completed:\n${JSON.stringify(result, null, 2)}\n\n${createdCards.length > 0 ? `✅ Successfully created ${createdCards.length} cards` : ''}${failedCards.length > 0 ? `\n❌ Failed to create ${failedCards.length} cards` : ''}` 
+        }]
+      };
+    }
+  );
+
+  mcpServer.registerTool(
+    "move_card",
+    {
+      title: "Move Card",
+      description: "Move a card to a different status and optionally specify its position within that status.",
+      inputSchema: {
+        id: z.string().describe("The ID of the card to move"),
+        status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).describe("The target status to move the card to"),
+        position: z.number().optional().describe("Optional: position within the target status (0 = top, omit to add to end)")
+      }
+    },
+    async ({ id, status, position }) => {
           try {
             // Validate the update data using the schema
             const updateData: any = { status };
@@ -864,39 +752,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
             broadcast({ type: "CARD_UPDATED", data: card });
             
             return {
-              content: [
-                {
-                  type: "text",
-                  text: `Card moved successfully:\n${JSON.stringify(card, null, 2)}`
-                } as TextContent
-              ]
+          content: [{ type: "text", text: `Card moved successfully:\n${JSON.stringify(card, null, 2)}` }]
             };
           } catch (error) {
             if (error instanceof Error && error.name === "ZodError") {
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Invalid status. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`
-                  } as TextContent
-                ]
-              };
+          throw new Error(`Invalid status. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`);
             }
             throw error;
           }
         }
-        
-        case "update_card": {
-          const { id, ...updates } = args as {
-            id: string;
-            title?: string;
-            description?: string;
-            link?: string;
-            status?: string;
-          };
-          
+  );
+
+  mcpServer.registerTool(
+    "update_card",
+    {
+      title: "Update Card",
+      description: "Update properties of an existing card. Use Markdown formatting in the description for better readability.",
+      inputSchema: {
+        id: z.string().describe("The ID of the card to update"),
+        title: z.string().optional().describe("Optional: new title for the card"),
+        description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
+        link: z.string().optional().describe("Optional: new link for the card"),
+        status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: new status for the card")
+      }
+    },
+    async ({ id, title, description, link, status }) => {
           try {
             // Validate the update data using the schema
+        const updates: any = {};
+        if (title !== undefined) updates.title = title;
+        if (description !== undefined) updates.description = description;
+        if (link !== undefined) updates.link = link;
+        if (status !== undefined) updates.status = status;
+        
             const validatedData = updateCardSchema.parse(updates);
             const card = await storage.updateCard(id, validatedData);
             
@@ -904,59 +792,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
             broadcast({ type: "CARD_UPDATED", data: card });
             
             return {
-              content: [
-                {
-                  type: "text",
-                  text: `Card updated successfully:\n${JSON.stringify(card, null, 2)}`
-                } as TextContent
-              ]
+          content: [{ type: "text", text: `Card updated successfully:\n${JSON.stringify(card, null, 2)}` }]
             };
           } catch (error) {
             if (error instanceof Error && error.name === "ZodError") {
-              const statusError = updates.status ? ` Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${updates.status}` : '';
-              return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Invalid card data.${statusError}`
-                  } as TextContent
-                ]
-              };
+          const statusError = status ? ` Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}` : '';
+          throw new Error(`Invalid card data.${statusError}`);
             }
             throw error;
           }
         }
-        
-        case "delete_card": {
-          const { id } = args as { id: string };
+  );
+
+  mcpServer.registerTool(
+    "delete_card",
+    {
+      title: "Delete Card",
+      description: "Delete a card from the Kanban board.",
+      inputSchema: {
+        id: z.string().describe("The ID of the card to delete")
+      }
+    },
+    async ({ id }) => {
           await storage.deleteCard(id);
           
           // Broadcast card deletion
           broadcast({ type: "CARD_DELETED", data: { id } });
           
           return {
-            content: [
-              {
-                type: "text",
-                text: `Card ${id} deleted successfully`
-              } as TextContent
-            ]
-          };
-        }
-        
-        case "bulk_delete_cards": {
-          const { ids } = args as { ids: string[] };
-          
-          if (!Array.isArray(ids) || ids.length === 0) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: "Error: ids must be a non-empty array"
-                } as TextContent
-              ],
-              isError: true
-            };
+        content: [{ type: "text", text: `Card ${id} deleted successfully` }]
+      };
+    }
+  );
+
+  mcpServer.registerTool(
+    "bulk_delete_cards",
+    {
+      title: "Bulk Delete Cards",
+      description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one.",
+      inputSchema: {
+        ids: z.array(z.string()).min(1).describe("Array of card IDs to delete")
+      }
+    },
+    async ({ ids }) => {
+      if (!Array.isArray(ids) || ids.length === 0) {
+        throw new Error("ids must be a non-empty array");
           }
           
           const deletedIds = [];
@@ -993,12 +873,268 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
           
           return {
-            content: [
-              {
-                type: "text",
-                text: `Bulk delete completed:\n${JSON.stringify(result, null, 2)}`
-              } as TextContent
-            ]
+        content: [{ type: "text", text: `Bulk delete completed:\n${JSON.stringify(result, null, 2)}` }]
+      };
+    }
+  );
+
+  mcpServer.registerTool(
+    "batch_move_cards",
+    {
+      title: "Batch Move Cards",
+      description: "Move multiple cards in a single operation for better performance.",
+      inputSchema: {
+        operations: z.array(z.object({
+          cardId: z.string().describe("The ID of the card to move"),
+          status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).describe("The target status"),
+          position: z.number().optional().describe("Optional: position within the target status")
+        })).describe("Array of move operations to perform")
+      }
+    },
+    async ({ operations }) => {
+          const results = [];
+          
+          for (const op of operations) {
+            const { cardId, status, position } = op;
+            
+            if (!cardId || !status) {
+              continue;
+            }
+            
+            try {
+              const updateData: any = { status };
+              if (position !== undefined) {
+                updateData.order = position.toString();
+              }
+              
+              const updatedCard = await storage.updateCard(cardId, updateData);
+              results.push(updatedCard);
+              
+              // Broadcast each card update
+              broadcast({ type: "CARD_UPDATED", data: updatedCard });
+            } catch (error) {
+              console.error(`Failed to move card ${cardId}:`, error);
+            }
+          }
+          
+          return {
+        content: [{ type: "text", text: `Batch move completed:\n${JSON.stringify({ updated: results, count: results.length }, null, 2)}` }]
+      };
+    }
+  );
+
+  // Tool handler function to route tool calls
+  async function callToolHandler(name: string, args: any): Promise<any> {
+      switch (name) {
+        case "get_projects": {
+          const projects = await storage.getProjects();
+          return {
+          content: [{ type: "text", text: JSON.stringify(projects, null, 2) }]
+          };
+        }
+
+        case "get_cards": {
+        const { project, status } = args as { project?: string; status?: string };
+          const cards = await storage.getAllCards(project);
+          
+          if (status) {
+            const filteredCards = cards
+              .filter(card => card.status === status)
+              .sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            return {
+            content: [{ type: "text", text: JSON.stringify(filteredCards, null, 2) }]
+            };
+          } else {
+            return {
+            content: [{ type: "text", text: JSON.stringify(cards, null, 2) }]
+            };
+          }
+        }
+        
+        case "get_cards_by_status": {
+          const { project } = args as { project?: string };
+          const cards = await storage.getAllCards(project);
+          const grouped = cards.reduce((acc, card) => {
+            if (!acc[card.status]) {
+              acc[card.status] = [];
+            }
+            acc[card.status].push(card);
+            return acc;
+          }, {} as Record<string, typeof cards>);
+          
+          // Sort cards within each status by order
+          Object.keys(grouped).forEach(status => {
+            grouped[status].sort((a, b) => parseInt(a.order) - parseInt(b.order));
+          });
+          
+          return {
+          content: [{ type: "text", text: JSON.stringify(grouped, null, 2) }]
+          };
+        }
+        
+        case "get_card": {
+          const { id } = args as { id: string };
+          const card = await storage.getCard(id);
+          return {
+          content: [{ type: "text", text: JSON.stringify(card, null, 2) }]
+          };
+        }
+        
+        case "create_card": {
+          const { title, description, project, link, status = "not-started" } = args as {
+            title: string;
+            description: string;
+            project: string;
+            link?: string;
+            status?: string;
+          };
+          
+          try {
+            // Validate the card data using the schema
+            const validatedData = insertCardSchema.parse({
+              title,
+              description,
+              project,
+              link: link || undefined,
+              status
+            });
+            
+            const card = await storage.createCard(validatedData);
+            
+            // Broadcast card creation
+            broadcast({ type: "CARD_CREATED", data: card });
+            
+            return {
+            content: [{ type: "text", text: `Card created successfully:\n${JSON.stringify(card, null, 2)}` }]
+            };
+          } catch (error) {
+            if (error instanceof Error && error.name === "ZodError") {
+            throw new Error(`Invalid card data. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`);
+            }
+            throw error;
+          }
+        }
+        
+        case "move_card": {
+          const { id, status, position } = args as {
+            id: string;
+            status: string;
+            position?: number;
+          };
+          
+          try {
+            // Validate the update data using the schema
+            const updateData: any = { status };
+            if (position !== undefined) {
+              updateData.order = position.toString();
+            }
+            
+            const validatedData = updateCardSchema.parse(updateData);
+            const card = await storage.updateCard(id, validatedData);
+            
+            // Broadcast card update
+            broadcast({ type: "CARD_UPDATED", data: card });
+            
+            return {
+            content: [{ type: "text", text: `Card moved successfully:\n${JSON.stringify(card, null, 2)}` }]
+            };
+          } catch (error) {
+            if (error instanceof Error && error.name === "ZodError") {
+            throw new Error(`Invalid status. Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}`);
+            }
+            throw error;
+          }
+        }
+        
+        case "update_card": {
+        const { id, title, description, link, status } = args as {
+            id: string;
+            title?: string;
+            description?: string;
+            link?: string;
+            status?: string;
+          };
+          
+          try {
+            // Validate the update data using the schema
+          const updates: any = {};
+          if (title !== undefined) updates.title = title;
+          if (description !== undefined) updates.description = description;
+          if (link !== undefined) updates.link = link;
+          if (status !== undefined) updates.status = status;
+          
+            const validatedData = updateCardSchema.parse(updates);
+            const card = await storage.updateCard(id, validatedData);
+            
+            // Broadcast card update
+            broadcast({ type: "CARD_UPDATED", data: card });
+            
+            return {
+            content: [{ type: "text", text: `Card updated successfully:\n${JSON.stringify(card, null, 2)}` }]
+            };
+          } catch (error) {
+            if (error instanceof Error && error.name === "ZodError") {
+            const statusError = status ? ` Status must be one of: not-started, blocked, in-progress, complete, verified. Received: ${status}` : '';
+            throw new Error(`Invalid card data.${statusError}`);
+            }
+            throw error;
+          }
+        }
+        
+        case "delete_card": {
+          const { id } = args as { id: string };
+          await storage.deleteCard(id);
+          
+          // Broadcast card deletion
+          broadcast({ type: "CARD_DELETED", data: { id } });
+          
+          return {
+          content: [{ type: "text", text: `Card ${id} deleted successfully` }]
+          };
+        }
+        
+        case "bulk_delete_cards": {
+          const { ids } = args as { ids: string[] };
+          
+          if (!Array.isArray(ids) || ids.length === 0) {
+          throw new Error("ids must be a non-empty array");
+          }
+          
+          const deletedIds = [];
+          const failedIds = [];
+          
+          for (const id of ids) {
+            try {
+              const deleted = await storage.deleteCard(id);
+              if (deleted) {
+                deletedIds.push(id);
+              } else {
+                failedIds.push(id);
+              }
+            } catch (error) {
+              console.error(`Error deleting card ${id}:`, error);
+              failedIds.push(id);
+            }
+          }
+          
+          // Broadcast bulk deletion
+          if (deletedIds.length > 0) {
+            broadcast({
+              type: 'CARDS_BULK_DELETED',
+              data: deletedIds
+            });
+          }
+          
+          const result = {
+            deletedCount: deletedIds.length,
+            deletedIds,
+            failedCount: failedIds.length,
+            failedIds,
+            requestedCount: ids.length
+          };
+          
+          return {
+          content: [{ type: "text", text: `Bulk delete completed:\n${JSON.stringify(result, null, 2)}` }]
           };
         }
         
@@ -1030,29 +1166,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           return {
-            content: [
-              {
-                type: "text",
-                text: `Batch move completed:\n${JSON.stringify({ updated: results, count: results.length }, null, 2)}`
-              } as TextContent
-            ]
+          content: [{ type: "text", text: `Batch move completed:\n${JSON.stringify({ updated: results, count: results.length }, null, 2)}` }]
           };
         }
         
         default:
           throw new Error(`Tool ${name} not found`);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${errorMessage}`
-          } as TextContent
-        ],
-        isError: true
-      };
     }
   }
 
@@ -1068,14 +1187,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // MCP Info endpoint
   app.get('/mcp/info', (req, res) => {
+    // Get tools from the MCP server
+    const tools = [
+      { name: "get_projects", description: "Get all available projects in the Kanban system." },
+      { name: "get_cards", description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status." },
+      { name: "get_cards_by_status", description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project." },
+      { name: "get_card", description: "Get details of a specific card by its ID." },
+      { name: "create_card", description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure." },
+      { name: "move_card", description: "Move a card to a different status and optionally specify its position within that status." },
+      { name: "update_card", description: "Update properties of an existing card. Use Markdown formatting in the description for better readability." },
+      { name: "delete_card", description: "Delete a card from the Kanban board." },
+      { name: "bulk_delete_cards", description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one." },
+      { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." }
+    ];
+
     res.json({
       name: 'Kanban MCP Integrated Server',
       version: '1.0.0',
       description: 'Model Context Protocol server integrated with Kanban board application',
-      tools: mcpTools.map(tool => ({
-        name: tool.name,
-        description: tool.description
-      })),
+      tools,
       endpoints: {
         health: '/mcp/health',
         info: '/mcp/info',
@@ -1084,14 +1214,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // MCP POST endpoint for sending messages to server
+  // MCP JSON-RPC endpoint (simplified approach)
   app.post('/mcp', async (req, res) => {
     try {
       const { jsonrpc, id, method, params } = req.body;
-      const acceptHeader = req.headers.accept || '';
       
       console.log(`[MCP] Request: ${method}`, params ? JSON.stringify(params) : 'no params');
-      console.log(`[MCP] Headers:`, JSON.stringify(req.headers, null, 2));
 
       if (jsonrpc !== "2.0") {
         return res.status(400).json({
@@ -1101,22 +1229,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Handle notifications and responses (should return 202 Accepted)
+      // Handle notifications (no response needed)
       if (!id || method === "notifications/initialized") {
         console.log(`[MCP] Handling notification: ${method}`);
         return res.status(202).json({ received: true });
-      }
-
-      // For requests, check if client accepts SSE or JSON
-      const supportsSSE = acceptHeader.includes('text/event-stream');
-      const supportsJSON = acceptHeader.includes('application/json');
-
-      if (!supportsSSE && !supportsJSON) {
-        return res.status(400).json({
-          jsonrpc: "2.0",
-          id,
-          error: { code: -32600, message: "Accept header must include application/json or text/event-stream" }
-        });
       }
 
       let result;
@@ -1145,12 +1261,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
 
         case "tools/list":
-          result = { tools: mcpTools };
+          // Get tools from the MCP server
+          const tools = [
+            { name: "get_projects", description: "Get all available projects in the Kanban system." },
+            { name: "get_cards", description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status." },
+            { name: "get_cards_by_status", description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project." },
+            { name: "get_card", description: "Get details of a specific card by its ID." },
+            { name: "create_card", description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure." },
+            { name: "move_card", description: "Move a card to a different status and optionally specify its position within that status." },
+            { name: "update_card", description: "Update properties of an existing card. Use Markdown formatting in the description for better readability." },
+            { name: "delete_card", description: "Delete a card from the Kanban board." },
+            { name: "bulk_delete_cards", description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one." },
+            { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." }
+          ];
+          result = { tools };
           break;
 
         case "tools/call":
           const { name, arguments: args } = params;
-          result = await executeMcpTool(name, args || {});
+          console.log(`[MCP] Calling tool: ${name}`, args);
+          
+          // Call the tool handler directly
+          try {
+            result = await callToolHandler(name, args || {});
+          } catch (error) {
+            console.error(`[MCP] Tool call error:`, error);
+            return res.status(500).json({
+              jsonrpc: "2.0",
+              id,
+              error: { code: -32603, message: `Tool call failed: ${error instanceof Error ? error.message : String(error)}` }
+            });
+          }
           break;
 
         case "ping":
@@ -1166,26 +1307,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
       }
 
-      // Decide response format based on client preference
-      if (supportsSSE) {
-        // Return SSE stream
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-          ...(sessionId && { 'Mcp-Session-Id': sessionId })
-        });
-
-        // Send the JSON-RPC response as SSE data
-        res.write(`data: ${JSON.stringify({
-          jsonrpc: "2.0",
-          id,
-          result
-        })}\n\n`);
-        
-        res.end();
-      } else {
         // Return JSON response
         const headers = {
           'Content-Type': 'application/json',
@@ -1197,7 +1318,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id,
           result
         });
-      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

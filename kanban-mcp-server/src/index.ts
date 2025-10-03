@@ -373,7 +373,7 @@ server.registerTool(
 // CLI handling
 function showHelp() {
   console.error(`
-Kanban MCP Server v1.1.0
+Kanban MCP Server v1.1.1
 
 A Model Context Protocol server for Kanban board management.
 
@@ -446,7 +446,7 @@ async function main() {
   try {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error(`Kanban MCP Server v1.1.0 running on stdio`);
+    console.error(`Kanban MCP Server v1.1.1 running on stdio`);
     console.error(`Connected to Kanban API at: ${KANBAN_SERVER_URL}`);
   } catch (error) {
     console.error("Failed to start Kanban MCP Server:", error);

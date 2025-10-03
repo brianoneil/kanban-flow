@@ -173,6 +173,13 @@ dokku letsencrypt:cron-job --add
 2. Verify all dependencies are in `package.json`
 3. Ensure build script runs successfully locally
 
+### Procfile Syntax Errors
+
+If you see errors like `exec: NODE_ENV=production: not found`:
+1. Environment variables should be set via `dokku config:set`, not in the Procfile
+2. The Procfile should only contain: `web: node dist/index.js`
+3. Set environment variables separately: `dokku config:set app-name NODE_ENV=production`
+
 ### Database Connection Issues
 
 1. Verify your hosted database is accessible and running

@@ -41,7 +41,7 @@ npm install -g kanban-mcp-server
       "command": "npx",
       "args": ["kanban-mcp-server"],
       "env": {
-        "KANBAN_SERVER_URL": "http://localhost:3000"
+        "KANBAN_SERVER_URL": "https://kanban.lotsgoingon.com"
       }
     }
   }

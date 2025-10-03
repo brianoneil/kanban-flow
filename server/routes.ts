@@ -284,8 +284,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const card = await storage.createCard(validatedData);
           createdCards.push(card);
 
-          // Broadcast each card creation
+          // Broadcast each card creation with a small delay to prevent message loss
           broadcast({ type: "CARD_CREATED", data: card });
+          
+          // Small delay to ensure WebSocket messages are processed properly
+          if (i < cards.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
         } catch (error) {
           console.error(`Error creating card ${i}:`, error);
           failedCards.push({
@@ -303,6 +308,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         failedCards,
         requestedCount: cards.length
       };
+
+      // Send a bulk completion message to ensure UI refresh
+      if (createdCards.length > 0) {
+        broadcast({ 
+          type: "CARDS_BULK_CREATED", 
+          data: { 
+            cards: createdCards,
+            count: createdCards.length 
+          } 
+        });
+      }
 
       res.status(201).json(result);
     } catch (error) {
@@ -689,8 +705,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const card = await storage.createCard(validatedData);
           createdCards.push(card);
           
-          // Broadcast card creation
+          // Broadcast card creation with a small delay to prevent message loss
           broadcast({ type: "CARD_CREATED", data: card });
+          
+          // Small delay to ensure WebSocket messages are processed properly
+          if (i < cards.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+          }
         } catch (error) {
           console.error(`Error creating card "${cardData.title}":`, error);
           failedCards.push({
@@ -716,6 +737,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })),
         requestedCount: cards.length
       };
+
+      // Send a bulk completion message to ensure UI refresh
+      if (createdCards.length > 0) {
+        broadcast({ 
+          type: "CARDS_BULK_CREATED", 
+          data: { 
+            cards: createdCards,
+            count: createdCards.length 
+          } 
+        });
+      }
 
       return {
         content: [{ 

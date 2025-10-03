@@ -48,6 +48,13 @@ export function useWebSocket(options?: { onMessage?: (message: any) => void }) {
               queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
               break;
               
+            case 'CARDS_BULK_CREATED':
+              // Handle bulk card creation - invalidate all card-related queries for fresh data
+              queryClient.invalidateQueries({ queryKey: ['/api/cards'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/cards/summary'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+              break;
+              
             case 'CARD_UPDATED':
               // Update existing card in cache and invalidate queries
               queryClient.setQueryData(['/api/cards'], (oldData: Card[] = []) => {

@@ -73,7 +73,7 @@ export function CardsSummary({ selectedProject, className }: CardsSummaryProps) 
   // Listen for WebSocket updates to refresh summary
   useWebSocket({
     onMessage: (message: any) => {
-      if (['CARD_CREATED', 'CARD_UPDATED', 'CARD_DELETED', 'CARDS_BULK_DELETED'].includes(message.type)) {
+      if (['CARD_CREATED', 'CARD_UPDATED', 'CARD_DELETED', 'CARDS_BULK_DELETED', 'CARDS_BULK_CREATED'].includes(message.type)) {
         queryClient.invalidateQueries({ queryKey: ['/api/cards/summary'] });
       }
     }

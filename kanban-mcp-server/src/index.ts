@@ -260,7 +260,7 @@ server.registerTool(
       return {
         content: [{ 
           type: "text", 
-          text: `Bulk create completed:\n${JSON.stringify(result, null, 2)}\n\n${result.createdCount > 0 ? `✅ Successfully created ${result.createdCount} cards` : ''}${result.failedCount > 0 ? `\n❌ Failed to create ${result.failedCount} cards` : ''}` 
+          text: `Bulk create completed:\n${JSON.stringify(result, null, 2)}\n\n${result.createdCount > 0 ? `✅ Successfully created ${result.createdCount} cards` : ''}${result.failedCount > 0 ? `\n❌ Failed to create ${result.failedCount} cards` : ''}\n\n💡 UI should automatically refresh via WebSocket messages` 
         }]
       };
     } catch (error) {

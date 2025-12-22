@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outdir=dist --external:@neondatabase/* --external:express --external:drizzle-orm --external:drizzle-kit --external:zod --external:drizzle-zod --external:dotenv --external:ws --external:nanoid --external:memoizee --external:passport --external:passport-local --external:express-session --external:connect-pg-simple --external:memorystore",
+    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
@@ -88,8 +88,7 @@
     "ws": "^8.18.0",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0",
-    "drizzle-kit": "^0.30.4",
-    "vite": "^5.4.19"
+    "drizzle-kit": "^0.30.4"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.2.7",

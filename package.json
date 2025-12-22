@@ -88,7 +88,8 @@
     "ws": "^8.18.0",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0",
-    "drizzle-kit": "^0.30.4"
+    "drizzle-kit": "^0.30.4",
+    "vite": "^5.4.19"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.2.7",

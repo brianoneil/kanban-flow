@@ -6,11 +6,6 @@
   "repository": "https://github.com/boneil/kanban-flow",
   "logo": "",
   "success_url": "/",
-  "scripts": {
-    "dokku": {
-      "predeploy": "npm run build"
-    }
-  },
   "formation": {
     "web": {
       "quantity": 1,

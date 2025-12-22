@@ -108,6 +108,11 @@ export default function Login({ onLogin }: LoginProps) {
               )}
             </Button>
           </form>
+          <div className="mt-4 text-center">
+            <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+              v{__APP_VERSION__}
+            </span>
+          </div>
         </CardContent>
       </Card>
     </div>

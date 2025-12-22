@@ -42,7 +42,12 @@ export default function Kanban() {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Kanban Board</h1>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Multi-Project Management</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500 dark:text-gray-400">Multi-Project Management</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-mono">
+                v{__APP_VERSION__}
+              </span>
+            </div>
             
             <div className="flex items-center space-x-2">
               <Select value={selectedProject} onValueChange={setSelectedProject}>

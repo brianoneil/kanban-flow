@@ -640,10 +640,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
         project: z.string().describe("The project this card belongs to"),
         link: z.string().optional().describe("Optional: URL link related to the card"),
+        notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
         status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
       }
     },
-    async ({ title, description, project, link, status = "not-started" }) => {
+    async ({ title, description, project, link, notes, status = "not-started" }) => {
           try {
             // Validate the card data using the schema
             const validatedData = insertCardSchema.parse({
@@ -651,6 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               description,
               project,
               link: link || undefined,
+              notes: notes || undefined,
               status
             });
             
@@ -682,6 +684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure."),
           project: z.string().describe("The project this card belongs to"),
           link: z.string().optional().describe("Optional: URL link related to the card"),
+          notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
           status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
         })).min(1).max(20).describe("Array of cards to create (maximum 20 cards per request)")
       }
@@ -699,6 +702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: cardData.description,
             project: cardData.project,
             link: cardData.link || undefined,
+            notes: cardData.notes || undefined,
             status: cardData.status || "not-started"
           });
           
@@ -805,16 +809,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: z.string().optional().describe("Optional: new title for the card"),
         description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
         link: z.string().optional().describe("Optional: new link for the card"),
+        notes: z.string().optional().describe("Optional: new notes for extra context and information"),
         status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: new status for the card")
       }
     },
-    async ({ id, title, description, link, status }) => {
+    async ({ id, title, description, link, notes, status }) => {
           try {
             // Validate the update data using the schema
         const updates: any = {};
         if (title !== undefined) updates.title = title;
         if (description !== undefined) updates.description = description;
         if (link !== undefined) updates.link = link;
+        if (notes !== undefined) updates.notes = notes;
         if (status !== undefined) updates.status = status;
         
             const validatedData = updateCardSchema.parse(updates);
@@ -907,6 +913,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return {
         content: [{ type: "text", text: `Bulk delete completed:\n${JSON.stringify(result, null, 2)}` }]
       };
+    }
+  );
+
+  mcpServer.registerTool(
+    "add_comment",
+    {
+      title: "Add Comment",
+      description: "Add a comment to a card. Comments are timestamped and can be used for discussions, updates, or notes about the card's progress.",
+      inputSchema: {
+        id: z.string().describe("The ID of the card to add a comment to"),
+        content: z.string().describe("The content of the comment")
+      }
+    },
+    async ({ id, content }) => {
+      try {
+        const card = await storage.getCard(id);
+        if (!card) {
+          throw new Error("Card not found");
+        }
+        
+        let comments = [];
+        if (card.comments) {
+          try {
+            comments = JSON.parse(card.comments);
+          } catch (e) {
+            comments = [];
+          }
+        }
+        
+        const newComment = {
+          id: Math.random().toString(36).substr(2, 9),
+          content,
+          timestamp: new Date().toISOString()
+        };
+        comments.push(newComment);
+        
+        await storage.updateCard(id, {
+          comments: JSON.stringify(comments)
+        });
+        
+        broadcast({ type: "CARD_UPDATED", data: await storage.getCard(id) });
+        
+        return {
+          content: [{ type: "text", text: `Comment added successfully:\n${JSON.stringify(newComment, null, 2)}\n\nTotal comments: ${comments.length}` }]
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Failed to add comment: ${error instanceof Error ? error.message : String(error)}` }]
+        };
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "get_comments",
+    {
+      title: "Get Comments",
+      description: "Get all comments for a specific card, sorted by timestamp (newest first).",
+      inputSchema: {
+        id: z.string().describe("The ID of the card to get comments from")
+      }
+    },
+    async ({ id }) => {
+      try {
+        const card = await storage.getCard(id);
+        if (!card) {
+          throw new Error("Card not found");
+        }
+        
+        let comments = [];
+        if (card.comments) {
+          try {
+            comments = JSON.parse(card.comments);
+            comments.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          } catch (e) {
+            comments = [];
+          }
+        }
+        
+        return {
+          content: [{ 
+            type: "text", 
+            text: comments.length > 0 
+              ? `Found ${comments.length} comment${comments.length !== 1 ? 's' : ''}:\n${JSON.stringify(comments, null, 2)}`
+              : "No comments found for this card."
+          }]
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Failed to get comments: ${error instanceof Error ? error.message : String(error)}` }]
+        };
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "delete_comment",
+    {
+      title: "Delete Comment",
+      description: "Delete a specific comment from a card by its comment ID.",
+      inputSchema: {
+        cardId: z.string().describe("The ID of the card containing the comment"),
+        commentId: z.string().describe("The ID of the comment to delete")
+      }
+    },
+    async ({ cardId, commentId }) => {
+      try {
+        const card = await storage.getCard(cardId);
+        if (!card) {
+          throw new Error("Card not found");
+        }
+        
+        let comments = [];
+        if (card.comments) {
+          try {
+            comments = JSON.parse(card.comments);
+          } catch (e) {
+            return {
+              content: [{ type: "text", text: "Failed to parse comments" }]
+            };
+          }
+        }
+        
+        const initialLength = comments.length;
+        comments = comments.filter((c: any) => c.id !== commentId);
+        
+        if (comments.length === initialLength) {
+          return {
+            content: [{ type: "text", text: `Comment with ID ${commentId} not found` }]
+          };
+        }
+        
+        await storage.updateCard(cardId, {
+          comments: JSON.stringify(comments)
+        });
+        
+        broadcast({ type: "CARD_UPDATED", data: await storage.getCard(cardId) });
+        
+        return {
+          content: [{ type: "text", text: `Comment deleted successfully. Remaining comments: ${comments.length}` }]
+        };
+      } catch (error) {
+        return {
+          content: [{ type: "text", text: `Failed to delete comment: ${error instanceof Error ? error.message : String(error)}` }]
+        };
+      }
     }
   );
 
@@ -1013,11 +1165,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         case "create_card": {
-          const { title, description, project, link, status = "not-started" } = args as {
+          const { title, description, project, link, notes, status = "not-started" } = args as {
             title: string;
             description: string;
             project: string;
             link?: string;
+            notes?: string;
             status?: string;
           };
           
@@ -1028,6 +1181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               description,
               project,
               link: link || undefined,
+              notes: notes || undefined,
               status
             });
             
@@ -1079,11 +1233,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         case "update_card": {
-        const { id, title, description, link, status } = args as {
+        const { id, title, description, link, notes, status } = args as {
             id: string;
             title?: string;
             description?: string;
             link?: string;
+            notes?: string;
             status?: string;
           };
           
@@ -1093,6 +1248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (title !== undefined) updates.title = title;
           if (description !== undefined) updates.description = description;
           if (link !== undefined) updates.link = link;
+          if (notes !== undefined) updates.notes = notes;
           if (status !== undefined) updates.status = status;
           
             const validatedData = updateCardSchema.parse(updates);
@@ -1230,7 +1386,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       { name: "update_card", description: "Update properties of an existing card. Use Markdown formatting in the description for better readability." },
       { name: "delete_card", description: "Delete a card from the Kanban board." },
       { name: "bulk_delete_cards", description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one." },
-      { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." }
+      { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." },
+      { name: "add_comment", description: "Add a comment to a card. Comments are timestamped and can be used for discussions, updates, or notes about the card's progress." },
+      { name: "get_comments", description: "Get all comments for a specific card, sorted by timestamp (newest first)." },
+      { name: "delete_comment", description: "Delete a specific comment from a card by its comment ID." }
     ];
 
     res.json({

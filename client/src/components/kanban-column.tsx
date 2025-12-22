@@ -92,12 +92,12 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
     <div 
       ref={setNodeRef}
       className={cn(
-        "kanban-column rounded-xl overflow-hidden flex-shrink-0 relative group min-h-full transition-all duration-300 ease-in-out",
+        "kanban-column rounded-xl flex-shrink-0 relative group min-h-full transition-all duration-300 ease-in-out",
         isOver && "ring-2 ring-blue-400 ring-opacity-60 shadow-xl scale-[1.02]"
       )}
-      style={{ width: `${width}px` }}
+      style={{ width: `${width}px`, isolation: 'auto' }}
     >
-      <div className="min-h-full">
+      <div className="min-h-full rounded-xl overflow-hidden">
         <div className={cn("px-5 py-4 border-b border-white/20 dark:border-gray-600/20", getHeaderGradient())}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -112,31 +112,35 @@ export function KanbanColumn({ id, title, color, bgColor, cards, count, width = 
         
         <div
           className={cn(
-            "p-5 min-h-[500px] transition-all duration-300 bg-white/50 dark:bg-gray-800/50",
+            "p-5 min-h-[500px] transition-all duration-300 bg-white/50 dark:bg-gray-800/50 relative",
             isOver && "bg-gradient-to-b from-blue-50/50 to-blue-100/30 dark:from-blue-900/30 dark:to-blue-800/20"
           )}
         >
           <SortableContext items={cards.map(card => card.id)} strategy={verticalListSortingStrategy}>
-            <motion.div className="space-y-3" layout>
+            <div className="space-y-3">
               <AnimatePresence mode="popLayout">
                 {cards.map(card => (
                   <motion.div
                     key={card.id}
                     layoutId={`card-${card.id}`}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
                     transition={{ 
-                      layout: { duration: 0.5, ease: "easeInOut" },
-                      opacity: { duration: 0.3 },
-                      scale: { duration: 0.3 }
+                      layout: { 
+                        duration: 0.3, 
+                        ease: [0.4, 0, 0.2, 1]
+                      },
+                      opacity: { duration: 0.2 },
+                      y: { duration: 0.2 }
                     }}
+                    className="card-animation-wrapper"
                   >
                     <TaskCard card={card} onEdit={onEditCard} />
                   </motion.div>
                 ))}
               </AnimatePresence>
-            </motion.div>
+            </div>
           </SortableContext>
           
           {/* Drop zone for empty columns - make it more prominent when empty */}

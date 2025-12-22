@@ -1,11 +1,12 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp, Edit3, Copy, Check, Eye } from "lucide-react";
+import { GripVertical, ExternalLink, CheckCircle, AlertTriangle, Shield, Trash2, ChevronDown, ChevronUp, Edit3, Copy, Check, Eye, StickyNote, MessageSquare } from "lucide-react";
 import { Card, KanbanStatus } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ExplosionAnimation } from "./explosion-animation";
 import { parseTaskList, calculateTaskProgress, updateTaskCompletion, hasTaskList, serializeTaskList, extractTasksFromMarkdown, TaskItem } from "@/lib/task-utils";
+import { parseComments } from "@/lib/comment-utils";
 import { InteractiveMarkdown } from "./interactive-markdown";
 import { ViewCardDialog } from "./view-card-dialog";
 import { useState } from "react";
@@ -44,6 +45,10 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
   
   const taskProgress = calculateTaskProgress(tasks);
   const showProgress = tasks.length > 0;
+
+  // Parse comments to get count
+  const comments = parseComments(card.comments);
+  const commentCount = comments.length;
 
   const {
     attributes,
@@ -121,7 +126,7 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const cardText = `# ${card.title}\n\n${card.description}${card.link ? `\n\nLink: ${card.link}` : ''}`;
+      const cardText = `# ${card.title}\n\n${card.description}${card.notes ? `\n\n## Notes\n${card.notes}` : ''}${card.link ? `\n\nLink: ${card.link}` : ''}`;
       await navigator.clipboard.writeText(cardText);
       setJustCopied(true);
       toast({
@@ -187,7 +192,7 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
         className={cn(
           "task-card rounded-xl p-5 group relative flex flex-col min-w-[280px] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm transition-colors duration-300",
           getBorderColor(),
-          isDragging && "opacity-60 scale-105 rotate-2 shadow-2xl z-50",
+          isDragging && "opacity-40 cursor-grabbing",
           card._remoteUpdate && card._statusChanged && "ring-2 ring-blue-400 ring-opacity-75 animate-pulse",
           isExpanded && "min-h-fit"
         )}
@@ -220,11 +225,14 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
               )}
             </button>
 
-            {/* View button - only show on hover */}
+            {/* View button - always visible if has comments, otherwise show on hover */}
             <button
               onClick={() => setShowViewDialog(true)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 z-10"
-              title="View card details"
+              className={cn(
+                "transition-opacity duration-200 p-1 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 z-10",
+                commentCount > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              )}
+              title={commentCount > 0 ? `View card details (${commentCount} comment${commentCount !== 1 ? 's' : ''})` : "View card details"}
             >
               <Eye className="w-3 h-3" />
             </button>
@@ -295,6 +303,83 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
             />
           </motion.div>
           
+          {/* Notes Preview - show when expanded */}
+          {isExpanded && card.notes && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-800"
+            >
+              <div className="flex items-center space-x-1 mb-2">
+                <StickyNote className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Notes</span>
+              </div>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-2">
+                <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap line-clamp-3">
+                  {card.notes}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Comments Preview - show when expanded */}
+          {isExpanded && commentCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-1">
+                  <MessageSquare className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs font-semibold text-blue-700 dark:text-blue-400">
+                    {commentCount} Comment{commentCount !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowViewDialog(true);
+                  }}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+                >
+                  View all →
+                </button>
+              </div>
+              <div className="space-y-2">
+                {comments.slice(0, 2).map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-2"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(comment.timestamp).toLocaleDateString(undefined, {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-700 dark:text-gray-300 line-clamp-2">
+                      {comment.content}
+                    </p>
+                  </div>
+                ))}
+                {commentCount > 2 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 italic text-center">
+                    +{commentCount - 2} more comment{commentCount - 2 !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+          
           {/* Show expand/collapse button only if content is long enough */}
           {card.description && card.description.length > 100 && (
             <motion.button
@@ -325,20 +410,35 @@ export function TaskCard({ card, onEdit }: TaskCardProps) {
         </div>
         
         <div className="flex items-center justify-between mt-auto">
-          {card.link ? (
-            <a
-              href={card.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span>View Details</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          ) : (
-            <div></div>
-          )}
+          <div className="flex items-center space-x-2">
+            {card.link ? (
+              <a
+                href={card.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span>View Details</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            ) : (
+              <div></div>
+            )}
+            {/* Notes indicator */}
+            {card.notes && (
+              <div className="flex items-center space-x-1 text-amber-600 dark:text-amber-400" title="Has notes">
+                <StickyNote className="w-3 h-3" />
+              </div>
+            )}
+            {/* Comments indicator */}
+            {commentCount > 0 && (
+              <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400" title={`${commentCount} comment${commentCount !== 1 ? 's' : ''}`}>
+                <MessageSquare className="w-3 h-3" />
+                <span className="text-xs font-medium">{commentCount}</span>
+              </div>
+            )}
+          </div>
           
           <div className="flex items-center space-x-2">
             {getStatusIcon()}

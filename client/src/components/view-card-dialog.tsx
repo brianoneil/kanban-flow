@@ -1,4 +1,4 @@
-import { Card } from "@shared/schema";
+import { Card, Comment } from "@shared/schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { CommentSection } from "./comment-section";
+import { parseComments, serializeComments, addComment, deleteComment, updateComment, sortComments } from "@/lib/comment-utils";
 
 interface ViewCardDialogProps {
   card: Card;
@@ -18,6 +22,10 @@ interface ViewCardDialogProps {
 export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCardDialogProps) {
   const [isCopying, setIsCopying] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Parse comments from card
+  const comments = sortComments(parseComments(card.comments));
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -74,6 +82,72 @@ export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCar
   const handleEdit = () => {
     onOpenChange(false);
     onEditCard?.(card);
+  };
+
+  // Comment mutations
+  const updateCardComments = useMutation({
+    mutationFn: async (newComments: Comment[]) => {
+      console.log("Adding comment - card ID:", card.id);
+      console.log("New comments:", newComments);
+      console.log("Serialized:", serializeComments(newComments));
+      
+      const response = await apiRequest("PATCH", `/api/cards/${card.id}`, {
+        comments: serializeComments(newComments)
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      console.log("Comment mutation successful!");
+      queryClient.invalidateQueries({ queryKey: ["/api/cards"] });
+      toast({
+        title: "Success",
+        description: "Comment updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Comment error:", error);
+      toast({
+        title: "Error",
+        description: `Failed to update comments: ${error.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddComment = (content: string) => {
+    console.log("handleAddComment called with:", content);
+    console.log("Current comments:", comments);
+    
+    try {
+      const newComments = addComment(comments, content);
+      console.log("New comments array:", newComments);
+      updateCardComments.mutate(newComments);
+    } catch (error) {
+      console.error("Error in handleAddComment:", error);
+      toast({
+        title: "Error",
+        description: `Failed to add comment: ${error instanceof Error ? error.message : String(error)}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    const newComments = deleteComment(comments, commentId);
+    updateCardComments.mutate(newComments);
+    toast({
+      title: "Comment deleted",
+      description: "The comment has been removed.",
+    });
+  };
+
+  const handleUpdateComment = (commentId: string, content: string) => {
+    const newComments = updateComment(comments, commentId, content);
+    updateCardComments.mutate(newComments);
+    toast({
+      title: "Comment updated",
+      description: "Your comment has been updated.",
+    });
   };
 
   return (
@@ -159,45 +233,70 @@ export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCar
           </div>
         </DialogHeader>
         
-        <div className="overflow-y-auto flex-1 max-h-[60vh] px-1">
-          {card.description ? (
-            <div className="text-sm text-gray-600 break-words prose prose-sm max-w-none">
-              <ReactMarkdown 
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  // Use the same clean styling as InteractiveMarkdown
-                  p: ({ children }) => <p className="mb-2 last:mb-0 text-gray-700 dark:text-gray-300">{children}</p>,
-                  ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-2">{children}</ul>,
-                  ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
-                  li: ({ children }) => <li className="mb-1 ml-4 text-sm text-gray-700 dark:text-gray-300">{children}</li>,
-                  code: ({ children }) => <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm text-gray-800 dark:text-gray-200">{children}</code>,
-                  strong: ({ children }) => <strong className="font-semibold text-gray-800 dark:text-gray-200">{children}</strong>,
-                  em: ({ children }) => <em className="italic text-gray-700 dark:text-gray-300">{children}</em>,
-                  h1: ({ children }) => <h1 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h1>,
-                  h2: ({ children }) => <h2 className="text-base font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h2>,
-                  h3: ({ children }) => <h3 className="text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">{children}</h3>,
-                  blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 py-1 my-2 italic bg-gray-50 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300">{children}</blockquote>,
-                  a: ({ href, children }) => (
-                    <a 
-                      href={href} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
-                    >
-                      {children}
-                    </a>
-                  ),
-                  pre: ({ children }) => <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto my-2 text-sm">{children}</pre>,
-                }}
-              >
-                {card.description}
-              </ReactMarkdown>
-            </div>
-          ) : (
-            <div className="text-gray-500 dark:text-gray-400 italic text-center py-8">
-              No description provided
+        <div className="overflow-y-auto flex-1 max-h-[60vh] px-1 space-y-4">
+          {/* Description Section */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Description</h3>
+            {card.description ? (
+              <div className="text-sm text-gray-600 break-words prose prose-sm max-w-none">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    // Use the same clean styling as InteractiveMarkdown
+                    p: ({ children }) => <p className="mb-2 last:mb-0 text-gray-700 dark:text-gray-300">{children}</p>,
+                    ul: ({ children }) => <ul className="mb-2 last:mb-0 ml-2">{children}</ul>,
+                    ol: ({ children }) => <ol className="mb-2 last:mb-0 ml-4">{children}</ol>,
+                    li: ({ children }) => <li className="mb-1 ml-4 text-sm text-gray-700 dark:text-gray-300">{children}</li>,
+                    code: ({ children }) => <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm text-gray-800 dark:text-gray-200">{children}</code>,
+                    strong: ({ children }) => <strong className="font-semibold text-gray-800 dark:text-gray-200">{children}</strong>,
+                    em: ({ children }) => <em className="italic text-gray-700 dark:text-gray-300">{children}</em>,
+                    h1: ({ children }) => <h1 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h1>,
+                    h2: ({ children }) => <h2 className="text-base font-semibold mb-2 text-gray-900 dark:text-gray-100">{children}</h2>,
+                    h3: ({ children }) => <h3 className="text-sm font-medium mb-1 text-gray-900 dark:text-gray-100">{children}</h3>,
+                    blockquote: ({ children }) => <blockquote className="border-l-2 border-gray-300 dark:border-gray-600 pl-3 py-1 my-2 italic bg-gray-50 dark:bg-gray-800/30 text-gray-700 dark:text-gray-300">{children}</blockquote>,
+                    a: ({ href, children }) => (
+                      <a 
+                        href={href} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline"
+                      >
+                        {children}
+                      </a>
+                    ),
+                    pre: ({ children }) => <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto my-2 text-sm">{children}</pre>,
+                  }}
+                >
+                  {card.description}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <div className="text-gray-500 dark:text-gray-400 italic text-center py-4">
+                No description provided
+              </div>
+            )}
+          </div>
+
+          {/* Notes Section */}
+          {card.notes && (
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Notes</h3>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-3">
+                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{card.notes}</p>
+              </div>
             </div>
           )}
+
+          {/* Comments Section */}
+          <div className="border-t-2 border-blue-200 dark:border-blue-800 pt-4 mt-4">
+            <CommentSection
+              comments={comments}
+              onAddComment={handleAddComment}
+              onDeleteComment={handleDeleteComment}
+              onUpdateComment={handleUpdateComment}
+              isLoading={updateCardComments.isPending}
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

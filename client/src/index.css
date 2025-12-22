@@ -163,6 +163,18 @@
   }
 }
 
+/* Card layout animation wrapper - ensure animating cards appear above columns */
+.card-animation-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* When Framer Motion is animating a layout change, elevate the z-index */
+.card-animation-wrapper[data-framer-appear-id],
+.card-animation-wrapper[style*="transform"] {
+  z-index: 100 !important;
+}
+
 /* Markdown prose styles for cards */
 .task-card .prose {
   @apply text-gray-600;

@@ -41,6 +41,7 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
       description: card.description,
       link: card.link || "",
       status: card.status as KanbanStatus,
+      notes: card.notes || "",
     },
   });
 
@@ -145,6 +146,24 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
                       placeholder="https://example.com" 
                       type="url"
                       className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Add any additional notes or context..."
+                      className="min-h-[100px] resize-y bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                       {...field}
                     />
                   </FormControl>

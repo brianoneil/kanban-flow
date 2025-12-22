@@ -158,11 +158,12 @@ server.registerTool(
       description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
       project: z.string().describe("The project this card belongs to"),
       link: z.string().optional().describe("Optional: URL link related to the card"),
+      notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
       status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
     }
   },
-  async ({ title, description, project, link, status = "not-started" }) => {
-    const cardData = { title, description, project, link, status };
+  async ({ title, description, project, link, notes, status = "not-started" }) => {
+    const cardData = { title, description, project, link, notes, status };
     const card = await apiRequest("POST", "/api/cards", cardData);
     return {
       content: [{ type: "text", text: `Card created successfully:\n${JSON.stringify(card, null, 2)}` }]
@@ -200,14 +201,16 @@ server.registerTool(
       title: z.string().optional().describe("Optional: new title for the card"),
       description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
       link: z.string().optional().describe("Optional: new link for the card"),
+      notes: z.string().optional().describe("Optional: new notes for extra context and information"),
       status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: new status for the card")
     }
   },
-  async ({ id, title, description, link, status }) => {
+  async ({ id, title, description, link, notes, status }) => {
     const updates: any = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (link !== undefined) updates.link = link;
+    if (notes !== undefined) updates.notes = notes;
     if (status !== undefined) updates.status = status;
     
     const card = await apiRequest("PATCH", `/api/cards/${encodeURIComponent(id)}`, updates);
@@ -245,6 +248,7 @@ server.registerTool(
         description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure."),
         project: z.string().describe("The project this card belongs to"),
         link: z.string().optional().describe("Optional: URL link related to the card"),
+        notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
         status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
       })).min(1).max(20).describe("Array of cards to create (maximum 20 cards per request)")
     }
@@ -370,6 +374,144 @@ server.registerTool(
   }
 );
 
+server.registerTool(
+  "add_comment",
+  {
+    title: "Add Comment",
+    description: "Add a comment to a card. Comments are timestamped and can be used for discussions, updates, or notes about the card's progress.",
+    inputSchema: {
+      id: z.string().describe("The ID of the card to add a comment to"),
+      content: z.string().describe("The content of the comment")
+    }
+  },
+  async ({ id, content }) => {
+    try {
+      // Get the current card
+      const card = await apiRequest("GET", `/api/cards/${encodeURIComponent(id)}`);
+      
+      // Parse existing comments
+      let comments = [];
+      if (card.comments) {
+        try {
+          comments = JSON.parse(card.comments);
+        } catch (e) {
+          comments = [];
+        }
+      }
+      
+      // Add new comment
+      const newComment = {
+        id: Math.random().toString(36).substr(2, 9),
+        content,
+        timestamp: new Date().toISOString()
+      };
+      comments.push(newComment);
+      
+      // Update card with new comments
+      const updatedCard = await apiRequest("PATCH", `/api/cards/${encodeURIComponent(id)}`, {
+        comments: JSON.stringify(comments)
+      });
+      
+      return {
+        content: [{ type: "text", text: `Comment added successfully:\n${JSON.stringify(newComment, null, 2)}\n\nTotal comments: ${comments.length}` }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Failed to add comment: ${error instanceof Error ? error.message : String(error)}` }]
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "get_comments",
+  {
+    title: "Get Comments",
+    description: "Get all comments for a specific card, sorted by timestamp (newest first).",
+    inputSchema: {
+      id: z.string().describe("The ID of the card to get comments from")
+    }
+  },
+  async ({ id }) => {
+    try {
+      const card = await apiRequest("GET", `/api/cards/${encodeURIComponent(id)}`);
+      
+      let comments = [];
+      if (card.comments) {
+        try {
+          comments = JSON.parse(card.comments);
+          // Sort by timestamp, newest first
+          comments.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        } catch (e) {
+          comments = [];
+        }
+      }
+      
+      return {
+        content: [{ 
+          type: "text", 
+          text: comments.length > 0 
+            ? `Found ${comments.length} comment${comments.length !== 1 ? 's' : ''}:\n${JSON.stringify(comments, null, 2)}`
+            : "No comments found for this card."
+        }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Failed to get comments: ${error instanceof Error ? error.message : String(error)}` }]
+      };
+    }
+  }
+);
+
+server.registerTool(
+  "delete_comment",
+  {
+    title: "Delete Comment",
+    description: "Delete a specific comment from a card by its comment ID.",
+    inputSchema: {
+      cardId: z.string().describe("The ID of the card containing the comment"),
+      commentId: z.string().describe("The ID of the comment to delete")
+    }
+  },
+  async ({ cardId, commentId }) => {
+    try {
+      const card = await apiRequest("GET", `/api/cards/${encodeURIComponent(cardId)}`);
+      
+      let comments = [];
+      if (card.comments) {
+        try {
+          comments = JSON.parse(card.comments);
+        } catch (e) {
+          return {
+            content: [{ type: "text", text: "Failed to parse comments" }]
+          };
+        }
+      }
+      
+      const initialLength = comments.length;
+      comments = comments.filter((c: any) => c.id !== commentId);
+      
+      if (comments.length === initialLength) {
+        return {
+          content: [{ type: "text", text: `Comment with ID ${commentId} not found` }]
+        };
+      }
+      
+      await apiRequest("PATCH", `/api/cards/${encodeURIComponent(cardId)}`, {
+        comments: JSON.stringify(comments)
+      });
+      
+      return {
+        content: [{ type: "text", text: `Comment deleted successfully. Remaining comments: ${comments.length}` }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: `Failed to delete comment: ${error instanceof Error ? error.message : String(error)}` }]
+      };
+    }
+  }
+);
+
 // CLI handling
 function showHelp() {
   console.error(`
@@ -419,6 +561,9 @@ Available Tools:
   - delete_card: Delete a card
   - bulk_delete_cards: Delete multiple cards efficiently
   - batch_move_cards: Move multiple cards in one operation
+  - add_comment: Add a comment to a card
+  - get_comments: Get all comments for a card
+  - delete_comment: Delete a specific comment from a card
 
 For more information, visit: https://github.com/yourusername/kanban-mcp-server
 `);

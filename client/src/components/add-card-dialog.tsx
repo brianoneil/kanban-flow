@@ -49,6 +49,7 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
       link: "",
       status: "not-started",
       project,
+      notes: "",
     },
   });
 
@@ -69,6 +70,7 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
         link: "",
         status: "not-started",
         project: project,
+        notes: "",
       });
       onOpenChange(false);
     },
@@ -152,6 +154,24 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
                       placeholder="https://example.com"
                       type="url"
                       className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">Notes (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Add any additional notes or context..."
+                      className="min-h-[80px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 resize-none"
                       {...field}
                     />
                   </FormControl>

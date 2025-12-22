@@ -320,13 +320,13 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
       </div>
 
       <div className="w-full overflow-x-auto">
-        <LayoutGroup>
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            collisionDetection={pointerWithin}
-          >
+        <DndContext
+          sensors={sensors}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          collisionDetection={pointerWithin}
+        >
+          <LayoutGroup>
             <div className="flex gap-6 min-h-screen pb-4 px-6">
               {KANBAN_STATUSES.map(status => {
                 const config = getColumnConfig(status);
@@ -348,22 +348,20 @@ export function KanbanBoard({ selectedProject }: KanbanBoardProps) {
                 );
               })}
             </div>
+          </LayoutGroup>
         
-        <DragOverlay dropAnimation={null}>
-          {activeCard ? (
-            <motion.div
-              initial={{ rotate: 2, scale: 1.05, opacity: 0.9 }}
-              animate={{ rotate: 2, scale: 1.05, opacity: 0.9 }}
-              exit={{ scale: 1, rotate: 0, opacity: 1 }}
-              transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="shadow-2xl"
-            >
-              <TaskCard card={activeCard} />
-            </motion.div>
-          ) : null}
-        </DragOverlay>
-          </DndContext>
-        </LayoutGroup>
+          {/* DragOverlay must be outside LayoutGroup for proper z-index layering */}
+          <DragOverlay 
+            dropAnimation={null}
+            style={{ zIndex: 9999 }}
+          >
+            {activeCard ? (
+              <div className="transform rotate-2 scale-105 opacity-95 cursor-grabbing">
+                <TaskCard card={activeCard} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       <AddCardDialog

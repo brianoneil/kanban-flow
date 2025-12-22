@@ -22,6 +22,8 @@ export const cards = pgTable("cards", {
   order: text("order").notNull().default("0"),
   project: text("project").notNull().default("default"),
   taskList: text("task_list"), // JSON array of task items with completion status
+  notes: text("notes"), // Additional notes field for extra context and information
+  comments: text("comments"), // JSON array of comments with timestamps and content
 });
 
 export const insertCardSchema = createInsertSchema(cards).omit({
@@ -39,6 +41,14 @@ export const updateCardSchema = createInsertSchema(cards).omit({
 export type InsertCard = z.infer<typeof insertCardSchema>;
 export type UpdateCard = z.infer<typeof updateCardSchema>;
 export type Card = typeof cards.$inferSelect;
+
+// Comment type for card comments
+export interface Comment {
+  id: string;
+  content: string;
+  timestamp: string;
+  author?: string; // Optional for future use with authentication
+}
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

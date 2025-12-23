@@ -4,8 +4,10 @@ import { registerRoutes } from "./routes";
 import { serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Increase body size limits for image uploads (base64 encoding adds ~33% overhead)
+// 50MB limit allows for ~10MB images plus overhead and metadata
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 // Enhanced CORS support for MCP endpoints (needed for external MCP clients)
 app.use((req, res, next) => {

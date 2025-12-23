@@ -200,7 +200,7 @@ The header component is not responsive on mobile devices...
 ```
 
 **Image Upload Workflow:**
-1. Use `upload_image` tool with base64-encoded image data
+1. Use `upload_image` tool with the full file path to the image on your local system
 2. Optionally specify a width parameter for responsive sizing:
    - Pixels: `"width": "400"` → `![alt|400](url)`
    - Percentage: `"width": "50%"` → `![alt|50%](url)`

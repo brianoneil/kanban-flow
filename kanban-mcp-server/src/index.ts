@@ -152,16 +152,14 @@ server.registerTool(
   "upload_image",
   {
     title: "Upload Image",
-    description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%').",
+    description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%'). Provide the full file path to the image on your local system.",
     inputSchema: {
-      imageData: z.string().describe("Base64-encoded image data"),
-      filename: z.string().describe("Original filename with extension (e.g., 'screenshot.png')"),
-      mimeType: z.string().optional().describe("MIME type of the image (e.g., 'image/png'). Auto-detected from filename if not provided."),
+      filePath: z.string().describe("Full path to the image file on your local system (e.g., '/Users/username/Downloads/screenshot.png')"),
       width: z.string().optional().describe("Optional width constraint for the image display. Can be pixels (e.g., '400', '200') or percentage (e.g., '50%', '75%'). If not provided, image will be full responsive width.")
     }
   },
-  async ({ imageData, filename, mimeType, width }) => {
-    const uploadData = { imageData, filename, mimeType, width };
+  async ({ filePath, width }) => {
+    const uploadData = { filePath, width };
     const result = await apiRequest("POST", "/api/upload-image-mcp", uploadData);
     return {
       content: [{ type: "text", text: result.message || JSON.stringify(result, null, 2) }]

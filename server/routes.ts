@@ -14,6 +14,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import multer from "multer";
 import { uploadImageToR2, isValidImageType, isValidImageSize, isR2Configured } from "./r2-storage";
+import { promises as fs } from "fs";
+import path from "path";
 
 // WebSocket broadcast helper
 let wss: WebSocketServer;
@@ -159,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image upload endpoint (JSON with base64 from MCP)
+  // Image upload endpoint (JSON with file path from MCP)
   app.post("/api/upload-image-mcp", requireAuth, async (req, res) => {
     try {
       // Check if R2 is configured
@@ -170,34 +172,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { imageData, filename, mimeType, width } = req.body;
+      const { filePath, width } = req.body;
 
-      if (!imageData || !filename) {
-        return res.status(400).json({ message: "imageData and filename are required" });
+      if (!filePath) {
+        return res.status(400).json({ message: "filePath is required" });
       }
 
-      // Auto-detect MIME type from filename if not provided
-      let detectedMimeType = mimeType;
-      if (!detectedMimeType) {
-        const ext = filename.split('.').pop()?.toLowerCase();
-        const mimeTypes: Record<string, string> = {
-          'png': 'image/png',
-          'jpg': 'image/jpeg',
-          'jpeg': 'image/jpeg',
-          'gif': 'image/gif',
-          'webp': 'image/webp',
-          'svg': 'image/svg+xml'
-        };
-        detectedMimeType = mimeTypes[ext || ''] || 'image/png';
+      // Read file from the provided path
+      let buffer: Buffer;
+      let filename: string;
+      
+      try {
+        buffer = await fs.readFile(filePath);
+        filename = path.basename(filePath);
+      } catch (error) {
+        return res.status(400).json({ 
+          message: `Failed to read file from path: ${filePath}`,
+          error: error instanceof Error ? error.message : String(error)
+        });
       }
+
+      // Auto-detect MIME type from filename
+      const ext = filename.split('.').pop()?.toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'svg': 'image/svg+xml'
+      };
+      const detectedMimeType = mimeTypes[ext || ''] || 'image/png';
 
       // Validate image type
       if (!isValidImageType(detectedMimeType)) {
         return res.status(400).json({ message: 'Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.' });
       }
-
-      // Convert base64 to buffer
-      const buffer = Buffer.from(imageData, 'base64');
 
       // Validate file size
       if (!isValidImageSize(buffer.length)) {
@@ -772,43 +782,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "upload_image",
     {
       title: "Upload Image",
-      description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%').",
+      description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%'). Provide the full file path to the image on your local system.",
       inputSchema: {
-        imageData: z.string().describe("Base64-encoded image data"),
-        filename: z.string().describe("Original filename with extension (e.g., 'screenshot.png')"),
-        mimeType: z.string().optional().describe("MIME type of the image (e.g., 'image/png'). Auto-detected from filename if not provided."),
+        filePath: z.string().describe("Full path to the image file on your local system (e.g., '/Users/username/Downloads/screenshot.png')"),
         width: z.string().optional().describe("Optional width constraint for the image display. Can be pixels (e.g., '400', '200') or percentage (e.g., '50%', '75%'). If not provided, image will be full responsive width.")
       }
     },
-    async ({ imageData, filename, mimeType, width }) => {
+    async ({ filePath, width }) => {
       try {
         // Check if R2 is configured
         if (!isR2Configured()) {
           throw new Error("Image upload is not configured. R2 environment variables are missing.");
         }
 
-        // Auto-detect MIME type from filename if not provided
-        let detectedMimeType = mimeType;
-        if (!detectedMimeType) {
-          const ext = filename.split('.').pop()?.toLowerCase();
-          const mimeTypes: Record<string, string> = {
-            'png': 'image/png',
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'gif': 'image/gif',
-            'webp': 'image/webp',
-            'svg': 'image/svg+xml'
-          };
-          detectedMimeType = mimeTypes[ext || ''] || 'image/png';
+        // Read file from the provided path
+        let buffer: Buffer;
+        let filename: string;
+        
+        try {
+          buffer = await fs.readFile(filePath);
+          filename = path.basename(filePath);
+        } catch (error) {
+          throw new Error(`Failed to read file from path: ${filePath}. ${error instanceof Error ? error.message : String(error)}`);
         }
+
+        // Auto-detect MIME type from filename
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml'
+        };
+        const detectedMimeType = mimeTypes[ext || ''] || 'image/png';
 
         // Validate image type
         if (!isValidImageType(detectedMimeType)) {
           throw new Error('Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.');
         }
-
-        // Convert base64 to buffer
-        const buffer = Buffer.from(imageData, 'base64');
 
         // Validate file size
         if (!isValidImageSize(buffer.length)) {
@@ -1377,10 +1390,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         case "upload_image": {
-          const { imageData, filename, mimeType, width } = args as {
-            imageData: string;
-            filename: string;
-            mimeType?: string;
+          const { filePath, width } = args as {
+            filePath: string;
             width?: string;
           };
 
@@ -1390,28 +1401,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               throw new Error("Image upload is not configured. R2 environment variables are missing.");
             }
 
-            // Auto-detect MIME type from filename if not provided
-            let detectedMimeType = mimeType;
-            if (!detectedMimeType) {
-              const ext = filename.split('.').pop()?.toLowerCase();
-              const mimeTypes: Record<string, string> = {
-                'png': 'image/png',
-                'jpg': 'image/jpeg',
-                'jpeg': 'image/jpeg',
-                'gif': 'image/gif',
-                'webp': 'image/webp',
-                'svg': 'image/svg+xml'
-              };
-              detectedMimeType = mimeTypes[ext || ''] || 'image/png';
+            // Read file from the provided path
+            let buffer: Buffer;
+            let filename: string;
+            
+            try {
+              buffer = await fs.readFile(filePath);
+              filename = path.basename(filePath);
+            } catch (error) {
+              throw new Error(`Failed to read file from path: ${filePath}. ${error instanceof Error ? error.message : String(error)}`);
             }
+
+            // Auto-detect MIME type from filename
+            const ext = filename.split('.').pop()?.toLowerCase();
+            const mimeTypes: Record<string, string> = {
+              'png': 'image/png',
+              'jpg': 'image/jpeg',
+              'jpeg': 'image/jpeg',
+              'gif': 'image/gif',
+              'webp': 'image/webp',
+              'svg': 'image/svg+xml'
+            };
+            const detectedMimeType = mimeTypes[ext || ''] || 'image/png';
 
             // Validate image type
             if (!isValidImageType(detectedMimeType)) {
               throw new Error('Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.');
             }
-
-            // Convert base64 to buffer
-            const buffer = Buffer.from(imageData, 'base64');
 
             // Validate file size
             if (!isValidImageSize(buffer.length)) {

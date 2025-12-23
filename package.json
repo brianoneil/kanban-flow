@@ -9,6 +9,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "test:upload": "tsx test-image-upload.ts",
+    "test:mcp-upload": "tsx test-mcp-upload.ts",
     "heroku-postbuild": "npm run build"
   },
   "dependencies": {

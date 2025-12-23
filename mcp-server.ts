@@ -3,6 +3,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { promises as fs } from "fs";
+import path from "path";
 
 // Default server URL - can be overridden with environment variable
 const KANBAN_SERVER_URL = process.env.KANBAN_SERVER_URL || "http://localhost:3000";
@@ -11,20 +13,22 @@ const KANBAN_SERVER_URL = process.env.KANBAN_SERVER_URL || "http://localhost:300
  * Kanban MCP Server
  * 
  * Provides AI agents with tools to interact with a Kanban board API:
+ * - Get all projects
  * - Get all cards or filter by status
  * - Get cards grouped by status
  * - Get specific card details
- * - Create new cards
+ * - Upload images to R2 storage
+ * - Create new cards with Markdown and images
  * - Move cards between statuses and positions
  * - Update card properties
  * - Delete cards
- * - Batch move operations
+ * - Batch operations (delete, move)
  */
 
 // Create MCP Server instance
 const server = new McpServer({
   name: "kanban-integrated-server",
-  version: "1.0.0"
+  version: "1.2.1"
 });
 
 // Helper function to make API requests
@@ -134,20 +138,40 @@ server.registerTool(
 );
 
 server.registerTool(
+  "upload_image",
+  {
+    title: "Upload Image",
+    description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%'). Provide the full file path to the image on your local system.",
+    inputSchema: {
+      filePath: z.string().describe("Full path to the image file on your local system (e.g., '/Users/username/Downloads/screenshot.png')"),
+      width: z.string().optional().describe("Optional width constraint for the image display. Can be pixels (e.g., '400', '200') or percentage (e.g., '50%', '75%'). If not provided, image will be full responsive width.")
+    }
+  },
+  async ({ filePath, width }) => {
+    const uploadData = { filePath, width };
+    const result = await apiRequest("POST", "/api/upload-image-mcp", uploadData);
+    return {
+      content: [{ type: "text", text: result.message || JSON.stringify(result, null, 2) }]
+    };
+  }
+);
+
+server.registerTool(
   "create_card",
   {
     title: "Create Card",
-    description: "Create a new card in the Kanban board.",
+    description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting including images. To include images, first upload them using the upload_image tool, then use the returned URL in Markdown syntax: ![alt text](image-url)",
     inputSchema: {
       title: z.string().describe("The title of the card"),
-      description: z.string().describe("Detailed description of the card"),
+      description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), images (![alt](url)), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
       project: z.string().describe("The project this card belongs to"),
       link: z.string().optional().describe("Optional: URL link related to the card"),
+      notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
       status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).default("not-started").describe("The initial status of the card")
     }
   },
-  async ({ title, description, project, link, status = "not-started" }) => {
-    const cardData = { title, description, project, link, status };
+  async ({ title, description, project, link, notes, status = "not-started" }) => {
+    const cardData = { title, description, project, link, notes, status };
     const card = await apiRequest("POST", "/api/cards", cardData);
     return {
       content: [{ type: "text", text: `Card created successfully:\n${JSON.stringify(card, null, 2)}` }]
@@ -179,20 +203,22 @@ server.registerTool(
   "update_card",
   {
     title: "Update Card",
-    description: "Update properties of an existing card.",
+    description: "Update properties of an existing card. Use Markdown formatting in the description for better readability. Images can be included using ![alt](url) syntax after uploading with upload_image tool.",
     inputSchema: {
       id: z.string().describe("The ID of the card to update"),
       title: z.string().optional().describe("Optional: new title for the card"),
-      description: z.string().optional().describe("Optional: new description for the card"),
+      description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, images (![alt](url)), and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
       link: z.string().optional().describe("Optional: new link for the card"),
+      notes: z.string().optional().describe("Optional: new notes for extra context and information"),
       status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: new status for the card")
     }
   },
-  async ({ id, title, description, link, status }) => {
+  async ({ id, title, description, link, notes, status }) => {
     const updates: any = {};
     if (title !== undefined) updates.title = title;
     if (description !== undefined) updates.description = description;
     if (link !== undefined) updates.link = link;
+    if (notes !== undefined) updates.notes = notes;
     if (status !== undefined) updates.status = status;
     
     const card = await apiRequest("PATCH", `/api/cards/${encodeURIComponent(id)}`, updates);

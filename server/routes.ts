@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Image upload endpoint (JSON with file path from MCP)
+  // Image upload endpoint (JSON with base64 from MCP)
   app.post("/api/upload-image-mcp", requireAuth, async (req, res) => {
     try {
       // Check if R2 is configured
@@ -172,42 +172,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { filePath, width } = req.body;
+      const { imageData, filename, mimeType, width } = req.body;
 
-      if (!filePath) {
-        return res.status(400).json({ message: "filePath is required" });
+      if (!imageData || !filename) {
+        return res.status(400).json({ message: "imageData and filename are required" });
       }
 
-      // Read file from the provided path
-      let buffer: Buffer;
-      let filename: string;
-      
-      try {
-        buffer = await fs.readFile(filePath);
-        filename = path.basename(filePath);
-      } catch (error) {
-        return res.status(400).json({ 
-          message: `Failed to read file from path: ${filePath}`,
-          error: error instanceof Error ? error.message : String(error)
-        });
+      // Auto-detect MIME type from filename if not provided
+      let detectedMimeType = mimeType;
+      if (!detectedMimeType) {
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml'
+        };
+        detectedMimeType = mimeTypes[ext || ''] || 'image/png';
       }
-
-      // Auto-detect MIME type from filename
-      const ext = filename.split('.').pop()?.toLowerCase();
-      const mimeTypes: Record<string, string> = {
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-        'svg': 'image/svg+xml'
-      };
-      const detectedMimeType = mimeTypes[ext || ''] || 'image/png';
 
       // Validate image type
       if (!isValidImageType(detectedMimeType)) {
         return res.status(400).json({ message: 'Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.' });
       }
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(imageData, 'base64');
 
       // Validate file size
       if (!isValidImageSize(buffer.length)) {

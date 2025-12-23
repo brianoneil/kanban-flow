@@ -159,11 +159,24 @@ server.registerTool(
     }
   },
   async ({ filePath, width }) => {
-    const uploadData = { filePath, width };
-    const result = await apiRequest("POST", "/api/upload-image-mcp", uploadData);
-    return {
-      content: [{ type: "text", text: result.message || JSON.stringify(result, null, 2) }]
-    };
+    // Read the file locally
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    
+    try {
+      const buffer = await fs.readFile(filePath);
+      const filename = path.basename(filePath);
+      const imageData = buffer.toString('base64');
+      
+      // Send as base64 to remote server
+      const uploadData = { imageData, filename, width };
+      const result = await apiRequest("POST", "/api/upload-image-mcp", uploadData);
+      return {
+        content: [{ type: "text", text: result.message || JSON.stringify(result, null, 2) }]
+      };
+    } catch (error) {
+      throw new Error(`Failed to read file from path: ${filePath}. ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 );
 

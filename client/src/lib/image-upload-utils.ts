@@ -14,10 +14,10 @@ export async function uploadImage(file: File): Promise<string> {
     throw new Error('Invalid file type. Only images are allowed (JPEG, PNG, GIF, WebP, SVG).');
   }
 
-  // Validate file size (25MB max)
-  const maxSize = 25 * 1024 * 1024;
+  // Validate file size (10MB max)
+  const maxSize = 10 * 1024 * 1024;
   if (file.size > maxSize) {
-    throw new Error('File is too large. Maximum size is 25MB.');
+    throw new Error('File is too large. Maximum size is 10MB.');
   }
 
   // Create form data

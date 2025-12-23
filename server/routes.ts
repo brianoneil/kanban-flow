@@ -64,7 +64,7 @@ function requireAuth(req: any, res: any, next: any) {
   const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 25 * 1024 * 1024, // 25MB max file size
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
   },
   fileFilter: (req, file, cb) => {
     // Validate file type
@@ -135,8 +135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const width = req.body.width; // Optional width parameter from form data
 
       // Validate file size (double-check)
-      if (!isValidImageSize(file.size, 25)) {
-        return res.status(400).json({ message: "Image file is too large. Maximum size is 25MB." });
+      if (!isValidImageSize(file.size)) {
+        return res.status(400).json({ message: "Image file is too large. Maximum size is 10MB." });
       }
 
       // Upload to R2
@@ -215,8 +215,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const buffer = Buffer.from(imageData, 'base64');
 
       // Validate file size
-      if (!isValidImageSize(buffer.length, 25)) {
-        return res.status(400).json({ message: 'Image file is too large. Maximum size is 25MB.' });
+      if (!isValidImageSize(buffer.length)) {
+        return res.status(400).json({ message: 'Image file is too large. Maximum size is 10MB.' });
       }
 
       // Upload to R2
@@ -829,8 +829,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Validate file size
-        if (!isValidImageSize(buffer.length, 25)) {
-          throw new Error('Image file is too large. Maximum size is 25MB.');
+        if (!isValidImageSize(buffer.length)) {
+          throw new Error('Image file is too large. Maximum size is 10MB.');
         }
 
         // Upload to R2

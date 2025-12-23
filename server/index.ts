@@ -5,9 +5,9 @@ import { serveStatic, log } from "./vite";
 
 const app = express();
 // Increase body size limits for image uploads (base64 encoding adds ~33% overhead)
-// 50MB limit allows for ~10MB images plus overhead and metadata
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+// 15MB limit allows for ~10MB images plus overhead and metadata
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: false, limit: '15mb' }));
 
 // Enhanced CORS support for MCP endpoints (needed for external MCP clients)
 app.use((req, res, next) => {

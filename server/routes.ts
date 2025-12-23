@@ -132,6 +132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const file = req.file;
+      const width = req.body.width; // Optional width parameter from form data
 
       // Validate file size (double-check)
       if (!isValidImageSize(file.size)) {
@@ -145,12 +146,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         file.mimetype
       );
 
+      // Generate markdown with optional width syntax
+      const altText = file.originalname.split('.')[0];
+      let markdown: string;
+      
+      if (width) {
+        markdown = `![${altText}|${width}](${imageUrl})`;
+      } else {
+        markdown = `![${altText}](${imageUrl})`;
+      }
+
       res.json({
         success: true,
         url: imageUrl,
+        markdown,
         filename: file.originalname,
         size: file.size,
-        mimeType: file.mimetype
+        mimeType: file.mimetype,
+        message: `Image uploaded successfully!\n\nURL: ${imageUrl}\n\nMarkdown syntax to use in cards:\n${markdown}\n\n${width ? `Image will display with max-width: ${width}${width.includes('%') ? '' : 'px'}\n\n` : ''}You can now use this markdown in card descriptions.`
       });
     } catch (error) {
       console.error('Error uploading image:', error);

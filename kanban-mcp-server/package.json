@@ -1,6 +1,6 @@
 {
   "name": "kanban-mcp-server",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Model Context Protocol (MCP) server for Kanban board management. Provides AI agents with tools to interact with Kanban boards - create, read, update, and delete cards, manage projects, and organize workflows.",
   "main": "dist/index.js",
   "bin": {
@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
+    "form-data": "^4.0.5",
     "zod": "^3.24.2"
   },
   "devDependencies": {

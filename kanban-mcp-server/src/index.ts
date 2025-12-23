@@ -162,23 +162,59 @@ server.registerTool(
     // Read the file locally
     const fs = await import('fs/promises');
     const path = await import('path');
+    const FormData = (await import('form-data')).default;
     
     try {
       const buffer = await fs.readFile(filePath);
       const filename = path.basename(filePath);
-      const imageData = buffer.toString('base64');
       
-      // Send as base64 to remote server
-      const uploadData = { imageData, filename, width };
-      const result = await apiRequest("POST", "/api/upload-image-mcp", uploadData);
+      // Create multipart form data
+      const formData = new FormData();
+      formData.append('image', buffer, {
+        filename: filename,
+        contentType: getMimeType(filename)
+      });
+      
+      if (width) {
+        formData.append('width', width);
+      }
+      
+      // Send multipart request to server
+      const url = `${KANBAN_SERVER_URL}/api/upload-image`;
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData as any,
+        headers: formData.getHeaders()
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Upload failed: ${response.status} ${errorText}`);
+      }
+      
+      const result = await response.json();
       return {
         content: [{ type: "text", text: result.message || JSON.stringify(result, null, 2) }]
       };
     } catch (error) {
-      throw new Error(`Failed to read file from path: ${filePath}. ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to upload image from path: ${filePath}. ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );
+
+// Helper function to get MIME type from filename
+function getMimeType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'svg': 'image/svg+xml'
+  };
+  return mimeTypes[ext || ''] || 'image/png';
+}
 
 server.registerTool(
   "create_card",

@@ -162,18 +162,18 @@ server.registerTool(
     // Read the file locally
     const fs = await import('fs/promises');
     const path = await import('path');
-    const FormData = (await import('form-data')).default;
     
     try {
       const buffer = await fs.readFile(filePath);
       const filename = path.basename(filePath);
+      const mimeType = getMimeType(filename);
       
-      // Create multipart form data
+      // Create a Blob from the buffer (convert Buffer to Uint8Array for compatibility)
+      const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
+      
+      // Create multipart form data using native FormData (Node 18+)
       const formData = new FormData();
-      formData.append('image', buffer, {
-        filename: filename,
-        contentType: getMimeType(filename)
-      });
+      formData.append('image', blob, filename);
       
       if (width) {
         formData.append('width', width);
@@ -183,8 +183,7 @@ server.registerTool(
       const url = `${KANBAN_SERVER_URL}/api/upload-image`;
       const response = await fetch(url, {
         method: 'POST',
-        body: formData as any,
-        headers: formData.getHeaders()
+        body: formData
       });
       
       if (!response.ok) {

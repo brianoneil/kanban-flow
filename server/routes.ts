@@ -113,7 +113,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Image upload endpoint
+  // Image upload endpoint (multipart/form-data from browser)
   app.post("/api/upload-image", requireAuth, upload.single('image'), async (req, res) => {
     try {
       // Check if R2 is configured
@@ -149,6 +149,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filename: file.originalname,
         size: file.size,
         mimeType: file.mimetype
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      res.status(500).json({ 
+        message: "Failed to upload image",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  // Image upload endpoint (JSON with base64 from MCP)
+  app.post("/api/upload-image-mcp", requireAuth, async (req, res) => {
+    try {
+      // Check if R2 is configured
+      if (!isR2Configured()) {
+        return res.status(503).json({ 
+          message: "Image upload is not configured. Please contact administrator.",
+          error: "R2_NOT_CONFIGURED"
+        });
+      }
+
+      const { imageData, filename, mimeType, width } = req.body;
+
+      if (!imageData || !filename) {
+        return res.status(400).json({ message: "imageData and filename are required" });
+      }
+
+      // Auto-detect MIME type from filename if not provided
+      let detectedMimeType = mimeType;
+      if (!detectedMimeType) {
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const mimeTypes: Record<string, string> = {
+          'png': 'image/png',
+          'jpg': 'image/jpeg',
+          'jpeg': 'image/jpeg',
+          'gif': 'image/gif',
+          'webp': 'image/webp',
+          'svg': 'image/svg+xml'
+        };
+        detectedMimeType = mimeTypes[ext || ''] || 'image/png';
+      }
+
+      // Validate image type
+      if (!isValidImageType(detectedMimeType)) {
+        return res.status(400).json({ message: 'Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.' });
+      }
+
+      // Convert base64 to buffer
+      const buffer = Buffer.from(imageData, 'base64');
+
+      // Validate file size
+      if (!isValidImageSize(buffer.length)) {
+        return res.status(400).json({ message: 'Image file is too large. Maximum size is 10MB.' });
+      }
+
+      // Upload to R2
+      const imageUrl = await uploadImageToR2(buffer, filename, detectedMimeType);
+
+      // Generate markdown with optional width syntax
+      const altText = filename.split('.')[0];
+      let markdown: string;
+      
+      if (width) {
+        markdown = `![${altText}|${width}](${imageUrl})`;
+      } else {
+        markdown = `![${altText}](${imageUrl})`;
+      }
+
+      res.json({
+        success: true,
+        url: imageUrl,
+        markdown,
+        message: `Image uploaded successfully!\n\nURL: ${imageUrl}\n\nMarkdown syntax to use in cards:\n${markdown}\n\n${width ? `Image will display with max-width: ${width}${width.includes('%') ? '' : 'px'}\n\n` : ''}You can now use this markdown in card descriptions.`
       });
     } catch (error) {
       console.error('Error uploading image:', error);

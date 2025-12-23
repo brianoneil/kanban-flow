@@ -149,13 +149,34 @@ server.registerTool(
 );
 
 server.registerTool(
+  "upload_image",
+  {
+    title: "Upload Image",
+    description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%').",
+    inputSchema: {
+      imageData: z.string().describe("Base64-encoded image data"),
+      filename: z.string().describe("Original filename with extension (e.g., 'screenshot.png')"),
+      mimeType: z.string().optional().describe("MIME type of the image (e.g., 'image/png'). Auto-detected from filename if not provided."),
+      width: z.string().optional().describe("Optional width constraint for the image display. Can be pixels (e.g., '400', '200') or percentage (e.g., '50%', '75%'). If not provided, image will be full responsive width.")
+    }
+  },
+  async ({ imageData, filename, mimeType, width }) => {
+    const uploadData = { imageData, filename, mimeType, width };
+    const result = await apiRequest("POST", "/api/upload-image-mcp", uploadData);
+    return {
+      content: [{ type: "text", text: result.message || JSON.stringify(result, null, 2) }]
+    };
+  }
+);
+
+server.registerTool(
   "create_card",
   {
     title: "Create Card",
-    description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure.",
+    description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting including images. To include images, first upload them using the upload_image tool, then use the returned URL in Markdown syntax: ![alt text](image-url)",
     inputSchema: {
       title: z.string().describe("The title of the card - keep concise and descriptive"),
-      description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
+      description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), images (![alt](url)), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
       project: z.string().describe("The project this card belongs to"),
       link: z.string().optional().describe("Optional: URL link related to the card"),
       notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
@@ -195,11 +216,11 @@ server.registerTool(
   "update_card",
   {
     title: "Update Card",
-    description: "Update properties of an existing card. Use Markdown formatting in the description for better readability.",
+    description: "Update properties of an existing card. Use Markdown formatting in the description for better readability. Images can be included using ![alt](url) syntax after uploading with upload_image tool.",
     inputSchema: {
       id: z.string().describe("The ID of the card to update"),
       title: z.string().optional().describe("Optional: new title for the card"),
-      description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
+      description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, images (![alt](url)), and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
       link: z.string().optional().describe("Optional: new link for the card"),
       notes: z.string().optional().describe("Optional: new notes for extra context and information"),
       status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: new status for the card")

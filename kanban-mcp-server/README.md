@@ -14,6 +14,7 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that pr
 - Full Markdown support in card descriptions
 - Task lists with automatic progress bars
 - Links, code blocks, and formatting
+- Image uploads to R2 storage with markdown integration
 - Project organization
 
 🔧 **Developer Friendly**
@@ -105,11 +106,14 @@ npm install -g kanban-mcp-server
 ### Project Management
 - **`get_projects`**: Get all available projects in the system
 
+### Image Management
+- **`upload_image`**: Upload an image to R2 storage and get back a URL for use in Markdown
+
 ### Card Operations
 - **`get_cards`**: Get all cards with optional filtering by project and status
 - **`get_cards_by_status`**: Get cards grouped by status for better organization
 - **`get_card`**: Get detailed information about a specific card
-- **`create_card`**: Create a new card with Markdown description support
+- **`create_card`**: Create a new card with Markdown description support (including images)
 - **`bulk_create_cards`**: Create multiple cards in a single operation (perfect for breaking down tasks)
 - **`update_card`**: Update card properties (title, description, link, status)
 - **`move_card`**: Move a card to a different status with optional positioning
@@ -126,6 +130,11 @@ Once configured, you can use natural language with Claude to manage your Kanban 
 
 **Creating Cards:**
 > "Create a new card called 'Implement user authentication' in the 'Backend' project with a detailed description of the requirements"
+
+**Adding Images to Cards:**
+> "Upload this screenshot and add it to a new card about the UI bug in the header component"
+> 
+> "Create a card documenting the new dashboard design with the mockup image I provide"
 
 **Breaking Down Tasks:**
 > "Break down the 'User Authentication System' into smaller tasks and create cards for each component: login form, password reset, JWT tokens, session management, and OAuth integration"
@@ -169,6 +178,43 @@ const hashPassword = async (password) => {
 ```
 
 Task lists (- [ ] and - [x]) automatically show progress bars on cards!
+
+### Images in Cards
+
+Upload images using the `upload_image` tool and include them in card descriptions:
+
+```markdown
+## Bug Report: Header Layout Issue
+
+![Screenshot of the bug](https://your-r2-domain.r2.dev/images/123-screenshot.png)
+
+### Description
+The header component is not responsive on mobile devices...
+
+### Steps to Reproduce
+- [ ] Open the app on mobile
+- [ ] Navigate to the dashboard
+- [ ] Observe the broken layout
+
+![Expected behavior](https://your-r2-domain.r2.dev/images/456-expected.png)
+```
+
+**Image Upload Workflow:**
+1. Use `upload_image` tool with base64-encoded image data
+2. Optionally specify a width parameter for responsive sizing:
+   - Pixels: `"width": "400"` → `![alt|400](url)`
+   - Percentage: `"width": "50%"` → `![alt|50%](url)`
+3. Receive the image URL and formatted markdown
+4. Use the markdown in card descriptions
+5. Images are automatically displayed inline with click-to-expand functionality
+
+**Width Control Examples:**
+```markdown
+![Full size screenshot](url)              # No width specified - full responsive
+![Medium screenshot|400](url)             # 400px max-width
+![Small thumbnail|150](url)               # 150px max-width  
+![Half width comparison|50%](url)         # 50% of container width
+```
 
 ## API Requirements
 

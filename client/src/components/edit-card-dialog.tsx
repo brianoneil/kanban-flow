@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,8 @@ import { Card, updateCardSchema, UpdateCard, KANBAN_STATUSES, KanbanStatus } fro
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { handleImageDrop, handleImagePaste, insertTextAtCursor } from "@/lib/image-upload-utils";
+import { Loader2, Image as ImageIcon } from "lucide-react";
 
 // Extended schema for editing (includes status field)
 const editCardSchema = updateCardSchema.extend({
@@ -33,15 +35,18 @@ interface EditCardDialogProps {
 export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const form = useForm<EditCardForm>({
     resolver: zodResolver(editCardSchema),
     defaultValues: {
       title: card.title,
       description: card.description,
-      link: card.link || "",
+      link: card.link || undefined,
       status: card.status as KanbanStatus,
-      notes: card.notes || "",
+      notes: card.notes || undefined,
     },
   });
 
@@ -74,6 +79,84 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
 
   const onSubmit = (data: EditCardForm) => {
     updateMutation.mutate(data);
+  };
+
+  // Image upload handlers
+  const handleImageUploadComplete = (markdown: string) => {
+    const currentValue = form.getValues('description');
+    const textarea = descriptionTextareaRef.current;
+    
+    if (textarea) {
+      // Get cursor position
+      const start = textarea.selectionStart || 0;
+      const end = textarea.selectionEnd || 0;
+      
+      // Insert markdown at cursor position
+      const newValue = currentValue.substring(0, start) + `\n${markdown}\n` + currentValue.substring(end);
+      
+      // Update form value
+      form.setValue('description', newValue, { shouldDirty: true });
+      
+      // Set cursor position after inserted text
+      setTimeout(() => {
+        const newPos = start + markdown.length + 2;
+        textarea.setSelectionRange(newPos, newPos);
+        textarea.focus();
+      }, 0);
+    } else {
+      // Fallback if no textarea ref - append to end
+      form.setValue('description', currentValue + `\n${markdown}\n`, { shouldDirty: true });
+    }
+    
+    setIsUploading(false);
+    setIsDragging(false);
+    toast({
+      title: "Image uploaded",
+      description: "Image has been added to the description.",
+    });
+  };
+
+  const handleImageUploadError = (error: string) => {
+    setIsUploading(false);
+    setIsDragging(false);
+    toast({
+      title: "Upload failed",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const onDrop = async (e: React.DragEvent) => {
+    setIsUploading(true);
+    await handleImageDrop(
+      e.nativeEvent,
+      handleImageUploadComplete,
+      handleImageUploadError
+    );
+  };
+
+  const onPaste = async (e: React.ClipboardEvent) => {
+    const hasImageData = Array.from(e.clipboardData.items).some(item => item.type.startsWith('image/'));
+    if (hasImageData) {
+      setIsUploading(true);
+      await handleImagePaste(
+        e.nativeEvent,
+        handleImageUploadComplete,
+        handleImageUploadError
+      );
+    }
   };
 
   const getStatusLabel = (status: KanbanStatus) => {
@@ -122,15 +205,48 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel className="flex items-center justify-between">
+                    <span>Description</span>
+                    {isUploading && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Uploading image...
+                      </span>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Enter card description (Markdown supported)"
-                      className="min-h-[150px] resize-y bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                      {...field}
-                    />
+                    <div className="relative">
+                      <Textarea 
+                        placeholder="Enter card description (Markdown supported)\n\n💡 Tip: Drag & drop or paste images directly!"
+                        className={`min-h-[150px] resize-y bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 transition-colors ${
+                          isDragging ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20' : ''
+                        }`}
+                        onDragOver={onDragOver}
+                        onDragLeave={onDragLeave}
+                        onDrop={onDrop}
+                        onPaste={onPaste}
+                        disabled={isUploading}
+
+                        {...field}
+                        ref={(e) => {
+                          field.ref(e);
+                          (descriptionTextareaRef as any).current = e;
+                        }}
+                      />
+                      {isDragging && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80 dark:bg-blue-900/40 rounded-md pointer-events-none">
+                          <div className="text-center">
+                            <ImageIcon className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Drop image to upload</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </FormControl>
                   <FormMessage />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Supports Markdown formatting. Drop or paste images to upload automatically.
+                  </p>
                 </FormItem>
               )}
             />
@@ -165,6 +281,7 @@ export function EditCardDialog({ card, open, onOpenChange }: EditCardDialogProps
                       placeholder="Add any additional notes or context..."
                       className="min-h-[100px] resize-y bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
                       {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />

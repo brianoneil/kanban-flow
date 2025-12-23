@@ -21,6 +21,7 @@ interface ViewCardDialogProps {
 
 export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCardDialogProps) {
   const [isCopying, setIsCopying] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; alt: string } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -226,7 +227,6 @@ export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCar
                 onClick={() => onOpenChange(false)}
                 className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <X className="w-4 h-4 mr-2" />
                 Close
               </Button>
             </div>
@@ -265,6 +265,45 @@ export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCar
                       </a>
                     ),
                     pre: ({ children }) => <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-md overflow-x-auto my-2 text-sm">{children}</pre>,
+                    img: ({ src, alt }) => {
+                      // Parse Obsidian-style width syntax: ![alt|width](url)
+                      let displayAlt = alt || '';
+                      let width: string | undefined;
+                      
+                      if (displayAlt.includes('|')) {
+                        const parts = displayAlt.split('|');
+                        displayAlt = parts[0].trim();
+                        const widthValue = parts[1].trim();
+                        
+                        // Support both pixel values (200) and percentages (50%)
+                        if (widthValue) {
+                          width = widthValue.includes('%') ? widthValue : `${widthValue}px`;
+                        }
+                      }
+                      
+                      return (
+                        <img
+                          src={src}
+                          alt={displayAlt}
+                          loading="lazy"
+                          className="rounded-lg max-w-full h-auto my-3 cursor-pointer hover:opacity-90 transition-opacity shadow-md"
+                          style={width ? { maxWidth: width } : undefined}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLightboxImage({ src: src || '', alt: displayAlt });
+                          }}
+                          onError={(e) => {
+                            // Handle broken images gracefully
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = 'text-sm text-red-500 italic my-2 p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800';
+                            errorMsg.textContent = `⚠️ Image failed to load: ${displayAlt || 'untitled'}`;
+                            target.parentNode?.insertBefore(errorMsg, target);
+                          }}
+                        />
+                      );
+                    },
                   }}
                 >
                   {card.description}
@@ -299,6 +338,28 @@ export function ViewCardDialog({ card, open, onOpenChange, onEditCard }: ViewCar
           </div>
         </div>
       </DialogContent>
+
+      {/* Lightbox for full-size image viewing */}
+      {lightboxImage && (
+        <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-0">
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="absolute top-4 right-4 z-50 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="flex items-center justify-center w-full h-full p-8">
+              <img
+                src={lightboxImage.src}
+                alt={lightboxImage.alt}
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }

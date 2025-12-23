@@ -12,6 +12,8 @@ import {
   CallToolResult,
   TextContent,
 } from "@modelcontextprotocol/sdk/types.js";
+import multer from "multer";
+import { uploadImageToR2, isValidImageType, isValidImageSize, isR2Configured } from "./r2-storage";
 
 // WebSocket broadcast helper
 let wss: WebSocketServer;
@@ -56,6 +58,22 @@ function requireAuth(req: any, res: any, next: any) {
   return res.status(401).json({ message: "Authentication required" });
 }
 
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Validate file type
+    if (isValidImageType(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images are allowed (JPEG, PNG, GIF, WebP, SVG).'));
+    }
+  },
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session middleware
   setupSession(app);
@@ -94,6 +112,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     });
   });
+
+  // Image upload endpoint
+  app.post("/api/upload-image", requireAuth, upload.single('image'), async (req, res) => {
+    try {
+      // Check if R2 is configured
+      if (!isR2Configured()) {
+        return res.status(503).json({ 
+          message: "Image upload is not configured. Please contact administrator.",
+          error: "R2_NOT_CONFIGURED"
+        });
+      }
+
+      // Check if file was uploaded
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      const file = req.file;
+
+      // Validate file size (double-check)
+      if (!isValidImageSize(file.size)) {
+        return res.status(400).json({ message: "Image file is too large. Maximum size is 10MB." });
+      }
+
+      // Upload to R2
+      const imageUrl = await uploadImageToR2(
+        file.buffer,
+        file.originalname,
+        file.mimetype
+      );
+
+      res.json({
+        success: true,
+        url: imageUrl,
+        filename: file.originalname,
+        size: file.size,
+        mimeType: file.mimetype
+      });
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      res.status(500).json({ 
+        message: "Failed to upload image",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Protected routes - require authentication
   // Get all cards
   app.get("/api/cards", requireAuth, async (req, res) => {
@@ -631,13 +696,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   mcpServer.registerTool(
+    "upload_image",
+    {
+      title: "Upload Image",
+      description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax. Supports Obsidian-style width control: ![alt|width](url) where width can be pixels (e.g., '400') or percentage (e.g., '50%').",
+      inputSchema: {
+        imageData: z.string().describe("Base64-encoded image data"),
+        filename: z.string().describe("Original filename with extension (e.g., 'screenshot.png')"),
+        mimeType: z.string().optional().describe("MIME type of the image (e.g., 'image/png'). Auto-detected from filename if not provided."),
+        width: z.string().optional().describe("Optional width constraint for the image display. Can be pixels (e.g., '400', '200') or percentage (e.g., '50%', '75%'). If not provided, image will be full responsive width.")
+      }
+    },
+    async ({ imageData, filename, mimeType, width }) => {
+      try {
+        // Check if R2 is configured
+        if (!isR2Configured()) {
+          throw new Error("Image upload is not configured. R2 environment variables are missing.");
+        }
+
+        // Auto-detect MIME type from filename if not provided
+        let detectedMimeType = mimeType;
+        if (!detectedMimeType) {
+          const ext = filename.split('.').pop()?.toLowerCase();
+          const mimeTypes: Record<string, string> = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'webp': 'image/webp',
+            'svg': 'image/svg+xml'
+          };
+          detectedMimeType = mimeTypes[ext || ''] || 'image/png';
+        }
+
+        // Validate image type
+        if (!isValidImageType(detectedMimeType)) {
+          throw new Error('Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.');
+        }
+
+        // Convert base64 to buffer
+        const buffer = Buffer.from(imageData, 'base64');
+
+        // Validate file size
+        if (!isValidImageSize(buffer.length)) {
+          throw new Error('Image file is too large. Maximum size is 10MB.');
+        }
+
+        // Upload to R2
+        const imageUrl = await uploadImageToR2(buffer, filename, detectedMimeType);
+
+        // Generate markdown with optional width syntax
+        const altText = filename.split('.')[0]; // Use filename without extension as alt text
+        let markdown: string;
+        
+        if (width) {
+          // Obsidian-style syntax: ![alt|width](url)
+          markdown = `![${altText}|${width}](${imageUrl})`;
+        } else {
+          // Standard markdown: ![alt](url)
+          markdown = `![${altText}](${imageUrl})`;
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: `Image uploaded successfully!\n\nURL: ${imageUrl}\n\nMarkdown syntax to use in cards:\n${markdown}\n\n${width ? `Image will display with max-width: ${width}${width.includes('%') ? '' : 'px'}\n\n` : ''}You can now use this markdown in card descriptions.`
+          }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to upload image: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
     "create_card",
     {
       title: "Create Card",
-      description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure.",
+      description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting including images. To include images, first upload them using the upload_image tool, then use the returned URL in Markdown syntax: ![alt text](image-url)",
       inputSchema: {
         title: z.string().describe("The title of the card - keep concise and descriptive"),
-        description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
+        description: z.string().describe("Detailed description of the card in Markdown format. Use Markdown syntax for better formatting: **bold**, *italic*, `code`, [links](url), bullet lists (- item), numbered lists (1. item), headers (## Header), blockquotes (> quote), code blocks (```language code```), images (![alt](url)), and task lists (- [ ] unchecked, - [x] checked) for enhanced readability and structure. Task lists will automatically show progress bars on cards."),
         project: z.string().describe("The project this card belongs to"),
         link: z.string().optional().describe("Optional: URL link related to the card"),
         notes: z.string().optional().describe("Optional: Additional notes for extra context and information"),
@@ -803,11 +942,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "update_card",
     {
       title: "Update Card",
-      description: "Update properties of an existing card. Use Markdown formatting in the description for better readability.",
+      description: "Update properties of an existing card. Use Markdown formatting in the description for better readability. Images can be included using ![alt](url) syntax after uploading with upload_image tool.",
       inputSchema: {
         id: z.string().describe("The ID of the card to update"),
         title: z.string().optional().describe("Optional: new title for the card"),
-        description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
+        description: z.string().optional().describe("Optional: new description for the card in Markdown format. Use **bold**, *italic*, `code`, lists, headers, blockquotes, code blocks, images (![alt](url)), and task lists (- [ ] unchecked, - [x] checked) for better structure and readability. Task lists will show progress bars."),
         link: z.string().optional().describe("Optional: new link for the card"),
         notes: z.string().optional().describe("Optional: new notes for extra context and information"),
         status: z.enum(["not-started", "blocked", "in-progress", "complete", "verified"]).optional().describe("Optional: new status for the card")
@@ -1163,6 +1302,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: [{ type: "text", text: JSON.stringify(card, null, 2) }]
           };
         }
+
+        case "upload_image": {
+          const { imageData, filename, mimeType, width } = args as {
+            imageData: string;
+            filename: string;
+            mimeType?: string;
+            width?: string;
+          };
+
+          try {
+            // Check if R2 is configured
+            if (!isR2Configured()) {
+              throw new Error("Image upload is not configured. R2 environment variables are missing.");
+            }
+
+            // Auto-detect MIME type from filename if not provided
+            let detectedMimeType = mimeType;
+            if (!detectedMimeType) {
+              const ext = filename.split('.').pop()?.toLowerCase();
+              const mimeTypes: Record<string, string> = {
+                'png': 'image/png',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'gif': 'image/gif',
+                'webp': 'image/webp',
+                'svg': 'image/svg+xml'
+              };
+              detectedMimeType = mimeTypes[ext || ''] || 'image/png';
+            }
+
+            // Validate image type
+            if (!isValidImageType(detectedMimeType)) {
+              throw new Error('Invalid image type. Only JPEG, PNG, GIF, WebP, and SVG are supported.');
+            }
+
+            // Convert base64 to buffer
+            const buffer = Buffer.from(imageData, 'base64');
+
+            // Validate file size
+            if (!isValidImageSize(buffer.length)) {
+              throw new Error('Image file is too large. Maximum size is 10MB.');
+            }
+
+            // Upload to R2
+            const imageUrl = await uploadImageToR2(buffer, filename, detectedMimeType);
+
+            // Generate markdown with optional width syntax
+            const altText = filename.split('.')[0]; // Use filename without extension as alt text
+            let markdown: string;
+            
+            if (width) {
+              // Obsidian-style syntax: ![alt|width](url)
+              markdown = `![${altText}|${width}](${imageUrl})`;
+            } else {
+              // Standard markdown: ![alt](url)
+              markdown = `![${altText}](${imageUrl})`;
+            }
+
+            return {
+              content: [{
+                type: "text",
+                text: `Image uploaded successfully!\n\nURL: ${imageUrl}\n\nMarkdown syntax to use in cards:\n${markdown}\n\n${width ? `Image will display with max-width: ${width}${width.includes('%') ? '' : 'px'}\n\n` : ''}You can now use this markdown in card descriptions.`
+              }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to upload image: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
         
         case "create_card": {
           const { title, description, project, link, notes, status = "not-started" } = args as {
@@ -1381,7 +1588,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       { name: "get_cards", description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status." },
       { name: "get_cards_by_status", description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project." },
       { name: "get_card", description: "Get details of a specific card by its ID." },
-      { name: "create_card", description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure." },
+      { name: "upload_image", description: "Upload an image to R2 storage and get back a URL that can be used in Markdown. The returned URL can be inserted into card descriptions using ![alt text](url) syntax." },
+      { name: "create_card", description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting including images." },
       { name: "move_card", description: "Move a card to a different status and optionally specify its position within that status." },
       { name: "update_card", description: "Update properties of an existing card. Use Markdown formatting in the description for better readability." },
       { name: "delete_card", description: "Delete a card from the Kanban board." },
@@ -1458,7 +1666,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             { name: "get_cards", description: "Get all cards or filter by project and/or status. Returns cards sorted by their order within each status." },
             { name: "get_cards_by_status", description: "Get all cards grouped by status with proper ordering. Returns an object with status as keys and arrays of cards as values, optionally filtered by project." },
             { name: "get_card", description: "Get details of a specific card by its ID." },
-            { name: "create_card", description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting for better readability and structure." },
+            { name: "upload_image", description: "Upload an image to R2 storage and get back a URL that can be used in Markdown." },
+            { name: "create_card", description: "Create a new card in the Kanban board for a specific project. The description field supports full Markdown formatting including images." },
             { name: "move_card", description: "Move a card to a different status and optionally specify its position within that status." },
             { name: "update_card", description: "Update properties of an existing card. Use Markdown formatting in the description for better readability." },
             { name: "delete_card", description: "Delete a card from the Kanban board." },

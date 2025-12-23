@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,6 +30,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { KANBAN_STATUSES } from "@shared/schema";
+import { handleImageDrop, handleImagePaste, insertTextAtCursor } from "@/lib/image-upload-utils";
+import { Loader2, Image as ImageIcon } from "lucide-react";
 
 interface AddCardDialogProps {
   open: boolean;
@@ -40,16 +42,19 @@ interface AddCardDialogProps {
 export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const form = useForm<InsertCard>({
     resolver: zodResolver(insertCardSchema),
     defaultValues: {
       title: "",
       description: "",
-      link: "",
+      link: undefined,
       status: "not-started",
       project,
-      notes: "",
+      notes: undefined,
     },
   });
 
@@ -67,10 +72,10 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
       form.reset({
         title: "",
         description: "",
-        link: "",
+        link: undefined,
         status: "not-started",
         project: project,
-        notes: "",
+        notes: undefined,
       });
       onOpenChange(false);
     },
@@ -85,6 +90,84 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
 
   const onSubmit = (data: InsertCard) => {
     createCardMutation.mutate({ ...data, project });
+  };
+
+  // Image upload handlers
+  const handleImageUploadComplete = (markdown: string) => {
+    const currentValue = form.getValues('description');
+    const textarea = descriptionTextareaRef.current;
+    
+    if (textarea) {
+      // Get cursor position
+      const start = textarea.selectionStart || 0;
+      const end = textarea.selectionEnd || 0;
+      
+      // Insert markdown at cursor position
+      const newValue = currentValue.substring(0, start) + `\n${markdown}\n` + currentValue.substring(end);
+      
+      // Update form value
+      form.setValue('description', newValue, { shouldDirty: true });
+      
+      // Set cursor position after inserted text
+      setTimeout(() => {
+        const newPos = start + markdown.length + 2;
+        textarea.setSelectionRange(newPos, newPos);
+        textarea.focus();
+      }, 0);
+    } else {
+      // Fallback if no textarea ref - append to end
+      form.setValue('description', currentValue + `\n${markdown}\n`, { shouldDirty: true });
+    }
+    
+    setIsUploading(false);
+    setIsDragging(false);
+    toast({
+      title: "Image uploaded",
+      description: "Image has been added to the description.",
+    });
+  };
+
+  const handleImageUploadError = (error: string) => {
+    setIsUploading(false);
+    setIsDragging(false);
+    toast({
+      title: "Upload failed",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const onDrop = async (e: React.DragEvent) => {
+    setIsUploading(true);
+    await handleImageDrop(
+      e.nativeEvent,
+      handleImageUploadComplete,
+      handleImageUploadError
+    );
+  };
+
+  const onPaste = async (e: React.ClipboardEvent) => {
+    const hasImageData = Array.from(e.clipboardData.items).some(item => item.type.startsWith('image/'));
+    if (hasImageData) {
+      setIsUploading(true);
+      await handleImagePaste(
+        e.nativeEvent,
+        handleImageUploadComplete,
+        handleImageUploadError
+      );
+    }
   };
 
   const getStatusLabel = (status: string) => {
@@ -130,15 +213,48 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center justify-between">
+                    <span>Description</span>
+                    {isUploading && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Uploading...
+                      </span>
+                    )}
+                  </FormLabel>
                   <FormControl>
-                    <Textarea
-                      placeholder="Enter card description (Markdown supported)"
-                      className="min-h-[100px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 resize-none"
-                      {...field}
-                    />
+                    <div className="relative">
+                      <Textarea
+                        placeholder="Enter card description (Markdown supported)&#10;&#10;💡 Tip: Drag & drop or paste images directly!"
+                        className={`min-h-[100px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 resize-none transition-colors ${
+                          isDragging ? 'border-blue-500 dark:border-blue-400 border-2 bg-blue-50 dark:bg-blue-900/20' : ''
+                        }`}
+                        onDragOver={onDragOver}
+                        onDragLeave={onDragLeave}
+                        onDrop={onDrop}
+                        onPaste={onPaste}
+                        disabled={isUploading}
+
+                        {...field}
+                        ref={(e) => {
+                          field.ref(e);
+                          (descriptionTextareaRef as any).current = e;
+                        }}
+                      />
+                      {isDragging && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-blue-100/80 dark:bg-blue-900/40 rounded-md pointer-events-none">
+                          <div className="text-center">
+                            <ImageIcon className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+                            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Drop image to upload</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </FormControl>
                   <FormMessage />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Supports Markdown. Drop or paste images to upload.
+                  </p>
                 </FormItem>
               )}
             />
@@ -155,6 +271,7 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
                       type="url"
                       className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400"
                       {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />
@@ -173,6 +290,7 @@ export function AddCardDialog({ open, onOpenChange, project }: AddCardDialogProp
                       placeholder="Add any additional notes or context..."
                       className="min-h-[80px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 resize-none"
                       {...field}
+                      value={field.value || ""}
                     />
                   </FormControl>
                   <FormMessage />

@@ -121,3 +121,5 @@ export function isValidImageSize(sizeInBytes: number, maxSizeMB: number = 10): b
   return sizeInBytes <= maxSizeBytes;
 }
 
+
+

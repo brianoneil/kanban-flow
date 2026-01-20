@@ -305,3 +305,5 @@ Your KanbanFlow board now supports rich image uploads! Users can:
 - Frontend: `client/src/lib/image-upload-utils.ts`
 - Components: `client/src/components/*-dialog.tsx`
 
+
+

@@ -4,7 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import session from "express-session";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
-import { insertCardSchema, updateCardSchema } from "@shared/schema";
+import { insertCardSchema, updateCardSchema, insertReleaseNoteSchema, updateReleaseNoteSchema } from "@shared/schema";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import {
@@ -683,6 +683,230 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Release Notes Endpoints =====
+
+  // Get all release notes
+  app.get("/api/release-notes", requireAuth, async (req, res) => {
+    try {
+      const { project } = req.query;
+      const notes = await storage.getAllReleaseNotes(project as string);
+      res.json(notes);
+    } catch (error) {
+      console.error('Error fetching release notes:', error);
+      res.status(500).json({ message: "Failed to fetch release notes" });
+    }
+  });
+
+  // Search release notes
+  app.get("/api/release-notes/search", requireAuth, async (req, res) => {
+    try {
+      const { q, project } = req.query;
+      
+      if (!q || typeof q !== 'string') {
+        return res.status(400).json({ message: "Search query 'q' is required" });
+      }
+      
+      const notes = await storage.searchReleaseNotes(q, project as string);
+      res.json(notes);
+    } catch (error) {
+      console.error('Error searching release notes:', error);
+      res.status(500).json({ message: "Failed to search release notes" });
+    }
+  });
+
+  // Get single release note
+  app.get("/api/release-notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const note = await storage.getReleaseNote(id);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Release note not found" });
+      }
+      
+      res.json(note);
+    } catch (error) {
+      console.error('Error fetching release note:', error);
+      res.status(500).json({ message: "Failed to fetch release note" });
+    }
+  });
+
+  // Create new release note
+  app.post("/api/release-notes", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertReleaseNoteSchema.parse(req.body);
+      const note = await storage.createReleaseNote(validatedData);
+
+      // Broadcast release note creation
+      broadcast({ type: "RELEASE_NOTE_CREATED", data: note });
+
+      res.status(201).json(note);
+    } catch (error) {
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({
+          message: "Invalid release note data",
+          errors: JSON.parse(error.message)
+        });
+      }
+      console.error('Error creating release note:', error);
+      res.status(500).json({ message: "Failed to create release note" });
+    }
+  });
+
+  // Update release note
+  app.patch("/api/release-notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const validatedData = updateReleaseNoteSchema.parse(req.body);
+      const note = await storage.updateReleaseNote(id, validatedData);
+
+      // Broadcast release note update
+      broadcast({ type: "RELEASE_NOTE_UPDATED", data: note });
+
+      res.json(note);
+    } catch (error) {
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({
+          message: "Invalid release note data",
+          errors: JSON.parse(error.message)
+        });
+      }
+      if (error instanceof Error && error.message.includes("not found")) {
+        return res.status(404).json({ message: "Release note not found" });
+      }
+      console.error('Error updating release note:', error);
+      res.status(500).json({ message: "Failed to update release note" });
+    }
+  });
+
+  // Delete release note
+  app.delete("/api/release-notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteReleaseNote(id);
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Release note not found" });
+      }
+
+      // Broadcast release note deletion
+      broadcast({ type: "RELEASE_NOTE_DELETED", data: { id } });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting release note:', error);
+      res.status(500).json({ message: "Failed to delete release note" });
+    }
+  });
+
+  // Export release notes as text
+  app.get("/api/release-notes/export/text", requireAuth, async (req, res) => {
+    try {
+      const { project } = req.query;
+      const notes = await storage.getAllReleaseNotes(project as string);
+      
+      let text = "Release Notes\n";
+      text += "=".repeat(50) + "\n\n";
+      
+      if (project) {
+        text += `Project: ${project}\n\n`;
+      }
+      
+      notes.forEach((note, index) => {
+        text += `${index + 1}. ${note.title}\n`;
+        if (note.version) text += `   Version: ${note.version}\n`;
+        if (note.author) text += `   Author: ${note.author}\n`;
+        text += `   Created: ${new Date(note.createdAt).toLocaleString()}\n`;
+        text += `\n${note.content}\n\n`;
+        text += "-".repeat(50) + "\n\n";
+      });
+      
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename="release-notes-${project || 'all'}-${Date.now()}.txt"`);
+      res.send(text);
+    } catch (error) {
+      console.error('Error exporting release notes as text:', error);
+      res.status(500).json({ message: "Failed to export release notes" });
+    }
+  });
+
+  // Export release notes as markdown
+  app.get("/api/release-notes/export/markdown", requireAuth, async (req, res) => {
+    try {
+      const { project } = req.query;
+      const notes = await storage.getAllReleaseNotes(project as string);
+      
+      let markdown = "# Release Notes\n\n";
+      
+      if (project) {
+        markdown += `**Project:** ${project}\n\n`;
+      }
+      
+      notes.forEach(note => {
+        markdown += `## ${note.title}`;
+        if (note.version) markdown += ` (${note.version})`;
+        markdown += '\n\n';
+        
+        if (note.author) markdown += `**Author:** ${note.author}  \n`;
+        markdown += `**Created:** ${new Date(note.createdAt).toLocaleString()}  \n`;
+        markdown += `**Updated:** ${new Date(note.updatedAt).toLocaleString()}\n\n`;
+        
+        markdown += note.content + '\n\n';
+        
+        // Add story references if present
+        if (note.storyReferences) {
+          try {
+            const refs = JSON.parse(note.storyReferences);
+            if (refs.length > 0) {
+              markdown += '**Related Stories:**\n';
+              refs.forEach((ref: any) => {
+                markdown += `- [${ref.id}](${ref.url})${ref.title ? ` - ${ref.title}` : ''}\n`;
+              });
+              markdown += '\n';
+            }
+          } catch (e) {
+            // Ignore parsing errors
+          }
+        }
+        
+        markdown += '---\n\n';
+      });
+      
+      res.setHeader('Content-Type', 'text/markdown');
+      res.setHeader('Content-Disposition', `attachment; filename="release-notes-${project || 'all'}-${Date.now()}.md"`);
+      res.send(markdown);
+    } catch (error) {
+      console.error('Error exporting release notes as markdown:', error);
+      res.status(500).json({ message: "Failed to export release notes" });
+    }
+  });
+
+  // Export release notes as JSON
+  app.get("/api/release-notes/export/json", requireAuth, async (req, res) => {
+    try {
+      const { project } = req.query;
+      const notes = await storage.getAllReleaseNotes(project as string);
+      
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        project: project || 'all',
+        count: notes.length,
+        notes: notes.map(note => ({
+          ...note,
+          storyReferences: note.storyReferences ? JSON.parse(note.storyReferences) : [],
+          tags: note.tags ? JSON.parse(note.tags) : []
+        }))
+      };
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="release-notes-${project || 'all'}-${Date.now()}.json"`);
+      res.json(exportData);
+    } catch (error) {
+      console.error('Error exporting release notes as JSON:', error);
+      res.status(500).json({ message: "Failed to export release notes" });
+    }
+  });
+
   // ===== MCP (Model Context Protocol) Endpoints =====
 
   // Create MCP Server instance
@@ -1337,6 +1561,280 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
+  // ===== Release Notes MCP Tools =====
+
+  mcpServer.registerTool(
+    "get_release_notes",
+    {
+      title: "Get Release Notes",
+      description: "Get all release notes for a project or all projects. Returns notes sorted by creation date (newest first).",
+      inputSchema: {
+        project: z.string().optional().describe("Optional: filter release notes by specific project")
+      }
+    },
+    async ({ project }) => {
+      try {
+        const notes = await storage.getAllReleaseNotes(project);
+        return {
+          content: [{ type: "text", text: JSON.stringify(notes, null, 2) }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to get release notes: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "get_release_note",
+    {
+      title: "Get Release Note",
+      description: "Get details of a specific release note by its ID.",
+      inputSchema: {
+        id: z.string().describe("The ID of the release note to retrieve")
+      }
+    },
+    async ({ id }) => {
+      try {
+        const note = await storage.getReleaseNote(id);
+        if (!note) {
+          throw new Error("Release note not found");
+        }
+        return {
+          content: [{ type: "text", text: JSON.stringify(note, null, 2) }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to get release note: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "search_release_notes",
+    {
+      title: "Search Release Notes",
+      description: "Search release notes by query string. Searches in title, content, version, and tags fields.",
+      inputSchema: {
+        query: z.string().describe("Search query string"),
+        project: z.string().optional().describe("Optional: limit search to specific project")
+      }
+    },
+    async ({ query, project }) => {
+      try {
+        const notes = await storage.searchReleaseNotes(query, project);
+        return {
+          content: [{ type: "text", text: `Found ${notes.length} release note(s):\n${JSON.stringify(notes, null, 2)}` }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to search release notes: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "create_release_note",
+    {
+      title: "Create Release Note",
+      description: "Create a new release note for a project. Content supports full Markdown formatting. Story references should be provided as an array of objects with 'id' and 'url' fields.",
+      inputSchema: {
+        project: z.string().describe("The project this release note belongs to"),
+        title: z.string().describe("Title of the release note"),
+        content: z.string().describe("Content in Markdown format. Supports **bold**, *italic*, `code`, lists, headers, links, etc."),
+        version: z.string().optional().describe("Optional: version number for this release (e.g., '1.0.0', 'v2.1')"),
+        author: z.string().optional().describe("Optional: author name"),
+        tags: z.array(z.string()).optional().describe("Optional: array of tags for categorization"),
+        storyReferences: z.array(z.object({
+          id: z.string(),
+          url: z.string(),
+          title: z.string().optional()
+        })).optional().describe("Optional: array of story references with id, url, and optional title")
+      }
+    },
+    async ({ project, title, content, version, author, tags, storyReferences }) => {
+      try {
+        const validatedData = insertReleaseNoteSchema.parse({
+          project,
+          title,
+          content,
+          version,
+          author,
+          tags: tags ? JSON.stringify(tags) : undefined,
+          storyReferences: storyReferences ? JSON.stringify(storyReferences) : undefined
+        });
+        
+        const note = await storage.createReleaseNote(validatedData);
+        
+        // Broadcast release note creation
+        broadcast({ type: "RELEASE_NOTE_CREATED", data: note });
+        
+        return {
+          content: [{ type: "text", text: `Release note created successfully:\n${JSON.stringify(note, null, 2)}` }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to create release note: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "update_release_note",
+    {
+      title: "Update Release Note",
+      description: "Update an existing release note. All fields are optional - only provide fields you want to update.",
+      inputSchema: {
+        id: z.string().describe("The ID of the release note to update"),
+        title: z.string().optional().describe("Optional: new title"),
+        content: z.string().optional().describe("Optional: new content in Markdown format"),
+        version: z.string().optional().describe("Optional: new version number"),
+        author: z.string().optional().describe("Optional: new author name"),
+        tags: z.array(z.string()).optional().describe("Optional: new array of tags"),
+        storyReferences: z.array(z.object({
+          id: z.string(),
+          url: z.string(),
+          title: z.string().optional()
+        })).optional().describe("Optional: new array of story references")
+      }
+    },
+    async ({ id, title, content, version, author, tags, storyReferences }) => {
+      try {
+        const updates: any = {};
+        if (title !== undefined) updates.title = title;
+        if (content !== undefined) updates.content = content;
+        if (version !== undefined) updates.version = version;
+        if (author !== undefined) updates.author = author;
+        if (tags !== undefined) updates.tags = JSON.stringify(tags);
+        if (storyReferences !== undefined) updates.storyReferences = JSON.stringify(storyReferences);
+        
+        const validatedData = updateReleaseNoteSchema.parse(updates);
+        const note = await storage.updateReleaseNote(id, validatedData);
+        
+        // Broadcast release note update
+        broadcast({ type: "RELEASE_NOTE_UPDATED", data: note });
+        
+        return {
+          content: [{ type: "text", text: `Release note updated successfully:\n${JSON.stringify(note, null, 2)}` }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to update release note: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "delete_release_note",
+    {
+      title: "Delete Release Note",
+      description: "Delete a release note by its ID.",
+      inputSchema: {
+        id: z.string().describe("The ID of the release note to delete")
+      }
+    },
+    async ({ id }) => {
+      try {
+        const deleted = await storage.deleteReleaseNote(id);
+        if (!deleted) {
+          throw new Error("Release note not found");
+        }
+        
+        // Broadcast release note deletion
+        broadcast({ type: "RELEASE_NOTE_DELETED", data: { id } });
+        
+        return {
+          content: [{ type: "text", text: `Release note ${id} deleted successfully` }]
+        };
+      } catch (error) {
+        throw new Error(`Failed to delete release note: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
+  mcpServer.registerTool(
+    "export_release_notes",
+    {
+      title: "Export Release Notes",
+      description: "Export release notes in various formats (text, markdown, or json). Returns formatted content ready for download or display.",
+      inputSchema: {
+        format: z.enum(["text", "markdown", "json"]).describe("Export format: 'text', 'markdown', or 'json'"),
+        project: z.string().optional().describe("Optional: filter by specific project")
+      }
+    },
+    async ({ format, project }) => {
+      try {
+        const notes = await storage.getAllReleaseNotes(project);
+        
+        if (format === "json") {
+          const exportData = {
+            exportedAt: new Date().toISOString(),
+            project: project || 'all',
+            count: notes.length,
+            notes: notes.map(note => ({
+              ...note,
+              storyReferences: note.storyReferences ? JSON.parse(note.storyReferences) : [],
+              tags: note.tags ? JSON.parse(note.tags) : []
+            }))
+          };
+          return {
+            content: [{ type: "text", text: JSON.stringify(exportData, null, 2) }]
+          };
+        } else if (format === "markdown") {
+          let markdown = "# Release Notes\n\n";
+          if (project) markdown += `**Project:** ${project}\n\n`;
+          
+          notes.forEach(note => {
+            markdown += `## ${note.title}`;
+            if (note.version) markdown += ` (${note.version})`;
+            markdown += '\n\n';
+            
+            if (note.author) markdown += `**Author:** ${note.author}  \n`;
+            markdown += `**Created:** ${new Date(note.createdAt).toLocaleString()}  \n`;
+            markdown += `**Updated:** ${new Date(note.updatedAt).toLocaleString()}\n\n`;
+            
+            markdown += note.content + '\n\n';
+            
+            if (note.storyReferences) {
+              try {
+                const refs = JSON.parse(note.storyReferences);
+                if (refs.length > 0) {
+                  markdown += '**Related Stories:**\n';
+                  refs.forEach((ref: any) => {
+                    markdown += `- [${ref.id}](${ref.url})${ref.title ? ` - ${ref.title}` : ''}\n`;
+                  });
+                  markdown += '\n';
+                }
+              } catch (e) {
+                // Ignore parsing errors
+              }
+            }
+            
+            markdown += '---\n\n';
+          });
+          
+          return {
+            content: [{ type: "text", text: markdown }]
+          };
+        } else {
+          // text format
+          let text = "Release Notes\n" + "=".repeat(50) + "\n\n";
+          if (project) text += `Project: ${project}\n\n`;
+          
+          notes.forEach((note, index) => {
+            text += `${index + 1}. ${note.title}\n`;
+            if (note.version) text += `   Version: ${note.version}\n`;
+            if (note.author) text += `   Author: ${note.author}\n`;
+            text += `   Created: ${new Date(note.createdAt).toLocaleString()}\n`;
+            text += `\n${note.content}\n\n`;
+            text += "-".repeat(50) + "\n\n";
+          });
+          
+          return {
+            content: [{ type: "text", text }]
+          };
+        }
+      } catch (error) {
+        throw new Error(`Failed to export release notes: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
   // Tool handler function to route tool calls
   async function callToolHandler(name: string, args: any): Promise<any> {
       switch (name) {
@@ -1658,6 +2156,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
           content: [{ type: "text", text: `Batch move completed:\n${JSON.stringify({ updated: results, count: results.length }, null, 2)}` }]
           };
         }
+
+        // Release Notes tool handlers
+        case "get_release_notes": {
+          const { project } = args as { project?: string };
+          try {
+            const notes = await storage.getAllReleaseNotes(project);
+            return {
+              content: [{ type: "text", text: JSON.stringify(notes, null, 2) }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to get release notes: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        case "get_release_note": {
+          const { id } = args as { id: string };
+          try {
+            const note = await storage.getReleaseNote(id);
+            if (!note) {
+              throw new Error("Release note not found");
+            }
+            return {
+              content: [{ type: "text", text: JSON.stringify(note, null, 2) }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to get release note: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        case "search_release_notes": {
+          const { query, project } = args as { query: string; project?: string };
+          try {
+            const notes = await storage.searchReleaseNotes(query, project);
+            return {
+              content: [{ type: "text", text: `Found ${notes.length} release note(s):\n${JSON.stringify(notes, null, 2)}` }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to search release notes: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        case "create_release_note": {
+          const { project, title, content, version, author, tags, storyReferences } = args as {
+            project: string;
+            title: string;
+            content: string;
+            version?: string;
+            author?: string;
+            tags?: string[];
+            storyReferences?: Array<{ id: string; url: string; title?: string }>;
+          };
+          
+          try {
+            const validatedData = insertReleaseNoteSchema.parse({
+              project,
+              title,
+              content,
+              version,
+              author,
+              tags: tags ? JSON.stringify(tags) : undefined,
+              storyReferences: storyReferences ? JSON.stringify(storyReferences) : undefined
+            });
+            
+            const note = await storage.createReleaseNote(validatedData);
+            broadcast({ type: "RELEASE_NOTE_CREATED", data: note });
+            
+            return {
+              content: [{ type: "text", text: `Release note created successfully:\n${JSON.stringify(note, null, 2)}` }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to create release note: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        case "update_release_note": {
+          const { id, title, content, version, author, tags, storyReferences } = args as {
+            id: string;
+            title?: string;
+            content?: string;
+            version?: string;
+            author?: string;
+            tags?: string[];
+            storyReferences?: Array<{ id: string; url: string; title?: string }>;
+          };
+          
+          try {
+            const updates: any = {};
+            if (title !== undefined) updates.title = title;
+            if (content !== undefined) updates.content = content;
+            if (version !== undefined) updates.version = version;
+            if (author !== undefined) updates.author = author;
+            if (tags !== undefined) updates.tags = JSON.stringify(tags);
+            if (storyReferences !== undefined) updates.storyReferences = JSON.stringify(storyReferences);
+            
+            const validatedData = updateReleaseNoteSchema.parse(updates);
+            const note = await storage.updateReleaseNote(id, validatedData);
+            broadcast({ type: "RELEASE_NOTE_UPDATED", data: note });
+            
+            return {
+              content: [{ type: "text", text: `Release note updated successfully:\n${JSON.stringify(note, null, 2)}` }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to update release note: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        case "delete_release_note": {
+          const { id } = args as { id: string };
+          try {
+            const deleted = await storage.deleteReleaseNote(id);
+            if (!deleted) {
+              throw new Error("Release note not found");
+            }
+            broadcast({ type: "RELEASE_NOTE_DELETED", data: { id } });
+            return {
+              content: [{ type: "text", text: `Release note ${id} deleted successfully` }]
+            };
+          } catch (error) {
+            throw new Error(`Failed to delete release note: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
+
+        case "export_release_notes": {
+          const { format, project } = args as { format: "text" | "markdown" | "json"; project?: string };
+          try {
+            const notes = await storage.getAllReleaseNotes(project);
+            
+            if (format === "json") {
+              const exportData = {
+                exportedAt: new Date().toISOString(),
+                project: project || 'all',
+                count: notes.length,
+                notes: notes.map(note => ({
+                  ...note,
+                  storyReferences: note.storyReferences ? JSON.parse(note.storyReferences) : [],
+                  tags: note.tags ? JSON.parse(note.tags) : []
+                }))
+              };
+              return {
+                content: [{ type: "text", text: JSON.stringify(exportData, null, 2) }]
+              };
+            } else if (format === "markdown") {
+              let markdown = "# Release Notes\n\n";
+              if (project) markdown += `**Project:** ${project}\n\n`;
+              
+              notes.forEach(note => {
+                markdown += `## ${note.title}`;
+                if (note.version) markdown += ` (${note.version})`;
+                markdown += '\n\n';
+                
+                if (note.author) markdown += `**Author:** ${note.author}  \n`;
+                markdown += `**Created:** ${new Date(note.createdAt).toLocaleString()}  \n`;
+                markdown += `**Updated:** ${new Date(note.updatedAt).toLocaleString()}\n\n`;
+                
+                markdown += note.content + '\n\n';
+                
+                if (note.storyReferences) {
+                  try {
+                    const refs = JSON.parse(note.storyReferences);
+                    if (refs.length > 0) {
+                      markdown += '**Related Stories:**\n';
+                      refs.forEach((ref: any) => {
+                        markdown += `- [${ref.id}](${ref.url})${ref.title ? ` - ${ref.title}` : ''}\n`;
+                      });
+                      markdown += '\n';
+                    }
+                  } catch (e) {
+                    // Ignore parsing errors
+                  }
+                }
+                
+                markdown += '---\n\n';
+              });
+              
+              return {
+                content: [{ type: "text", text: markdown }]
+              };
+            } else {
+              let text = "Release Notes\n" + "=".repeat(50) + "\n\n";
+              if (project) text += `Project: ${project}\n\n`;
+              
+              notes.forEach((note, index) => {
+                text += `${index + 1}. ${note.title}\n`;
+                if (note.version) text += `   Version: ${note.version}\n`;
+                if (note.author) text += `   Author: ${note.author}\n`;
+                text += `   Created: ${new Date(note.createdAt).toLocaleString()}\n`;
+                text += `\n${note.content}\n\n`;
+                text += "-".repeat(50) + "\n\n";
+              });
+              
+              return {
+                content: [{ type: "text", text }]
+              };
+            }
+          } catch (error) {
+            throw new Error(`Failed to export release notes: ${error instanceof Error ? error.message : String(error)}`);
+          }
+        }
         
         default:
           throw new Error(`Tool ${name} not found`);
@@ -1691,7 +2387,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." },
       { name: "add_comment", description: "Add a comment to a card. Comments are timestamped and can be used for discussions, updates, or notes about the card's progress." },
       { name: "get_comments", description: "Get all comments for a specific card, sorted by timestamp (newest first)." },
-      { name: "delete_comment", description: "Delete a specific comment from a card by its comment ID." }
+      { name: "delete_comment", description: "Delete a specific comment from a card by its comment ID." },
+      { name: "get_release_notes", description: "Get all release notes for a project or all projects. Returns notes sorted by creation date (newest first)." },
+      { name: "get_release_note", description: "Get details of a specific release note by its ID." },
+      { name: "search_release_notes", description: "Search release notes by query string. Searches in title, content, version, and tags fields." },
+      { name: "create_release_note", description: "Create a new release note for a project. Content supports full Markdown formatting." },
+      { name: "update_release_note", description: "Update an existing release note. All fields are optional." },
+      { name: "delete_release_note", description: "Delete a release note by its ID." },
+      { name: "export_release_notes", description: "Export release notes in various formats (text, markdown, or json)." }
     ];
 
     res.json({
@@ -1766,7 +2469,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             { name: "update_card", description: "Update properties of an existing card. Use Markdown formatting in the description for better readability." },
             { name: "delete_card", description: "Delete a card from the Kanban board." },
             { name: "bulk_delete_cards", description: "Delete multiple cards from the Kanban board by their IDs. This is more efficient than deleting cards one by one." },
-            { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." }
+            { name: "batch_move_cards", description: "Move multiple cards in a single operation for better performance." },
+            { name: "add_comment", description: "Add a comment to a card." },
+            { name: "get_comments", description: "Get all comments for a specific card." },
+            { name: "delete_comment", description: "Delete a specific comment from a card." },
+            { name: "get_release_notes", description: "Get all release notes for a project or all projects." },
+            { name: "get_release_note", description: "Get details of a specific release note by its ID." },
+            { name: "search_release_notes", description: "Search release notes by query string." },
+            { name: "create_release_note", description: "Create a new release note for a project." },
+            { name: "update_release_note", description: "Update an existing release note." },
+            { name: "delete_release_note", description: "Delete a release note by its ID." },
+            { name: "export_release_notes", description: "Export release notes in various formats." }
           ];
           result = { tools };
           break;

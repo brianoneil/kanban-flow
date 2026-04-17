@@ -63,3 +63,40 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Release Notes table for project-based release notes
+export const releaseNotes = pgTable("release_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  project: text("project").notNull(),
+  version: text("version"), // Optional version number for the release
+  title: text("title").notNull(),
+  content: text("content").notNull(), // Markdown formatted content
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  author: text("author"), // Optional author name
+  tags: text("tags"), // JSON array of tags for categorization
+  storyReferences: text("story_references"), // JSON array of {id, url} for linked stories
+});
+
+export const insertReleaseNoteSchema = createInsertSchema(releaseNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateReleaseNoteSchema = createInsertSchema(releaseNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).partial();
+
+export type InsertReleaseNote = z.infer<typeof insertReleaseNoteSchema>;
+export type UpdateReleaseNote = z.infer<typeof updateReleaseNoteSchema>;
+export type ReleaseNote = typeof releaseNotes.$inferSelect;
+
+// Story Reference type for release notes
+export interface StoryReference {
+  id: string;
+  url: string;
+  title?: string;
+}

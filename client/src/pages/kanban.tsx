@@ -2,16 +2,18 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RotateCcw, LogOut } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { RotateCcw, LogOut, FileText } from "lucide-react";
 import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { KanbanBoard } from "@/components/kanban-board";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { CardsSummary } from "@/components/cards-summary";
+import { ReleaseNotesPanel } from "@/components/release-notes-panel";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Kanban() {
   const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const { toast } = useToast();
   const { logout } = useAuth();
 
@@ -37,9 +39,9 @@ export default function Kanban() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 flex flex-col">
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 transition-colors duration-300">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div className="flex items-center justify-between max-w-full mx-auto">
           <div className="flex items-center space-x-4">
             <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Kanban Board</h1>
             <div className="flex items-center gap-2">
@@ -79,6 +81,17 @@ export default function Kanban() {
               >
                 <RotateCcw className="h-4 w-4" />
               </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowReleaseNotes(true)}
+                className="flex items-center gap-2"
+                title="Open release notes"
+              >
+                <FileText className="h-4 w-4" />
+                Release Notes
+              </Button>
             </div>
           </div>
           
@@ -97,10 +110,27 @@ export default function Kanban() {
           </div>
         </div>
       </header>
-      <main className="w-full py-8">
+      <main className="w-full py-8 flex-grow overflow-hidden">
         <KanbanBoard selectedProject={selectedProject === "all" ? undefined : selectedProject} />
-        <CardsSummary selectedProject={selectedProject === "all" ? undefined : selectedProject} />
       </main>
+
+      <Sheet open={showReleaseNotes} onOpenChange={setShowReleaseNotes}>
+        <SheetContent side="right" className="w-[600px] sm:w-[700px] sm:max-w-[700px] overflow-y-auto bg-white dark:bg-gray-900">
+          <SheetHeader className="bg-white dark:bg-gray-900">
+            <SheetTitle>
+              Release Notes
+              {selectedProject !== "all" && (
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                  • {formatProjectName(selectedProject)}
+                </span>
+              )}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="mt-4 bg-white dark:bg-gray-900">
+            <ReleaseNotesPanel selectedProject={selectedProject === "all" ? undefined : selectedProject} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
